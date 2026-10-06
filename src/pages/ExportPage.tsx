@@ -204,7 +204,6 @@ function PaperSheet({ month, children }: { month: string; children: React.ReactN
       >
         {children}
       </div>
-      <Tape className="-top-[26px] left-1/2 w-[220px] -translate-x-1/2 rotate-[-2.5deg]" color="#eab8b4" />
       <Tape className="-top-[18px] -left-[42px] w-[150px] rotate-[-38deg]" color="#e4d3b8" />
       <Tape className="-top-[18px] -right-[42px] w-[150px] rotate-[38deg]" color="#c9d6c0" />
       <Tape className="-bottom-[20px] -left-[38px] w-[140px] rotate-[34deg]" color="#c9d6c0" />

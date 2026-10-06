@@ -78,10 +78,10 @@ export default function MonthGrid({ month, meals, analysis, birthDate, variant, 
                   <div className={isExport ? 'flex items-center gap-1' : 'flex flex-col items-start'}>
                     <span
                       className={`hand-circle date-serif inline-flex shrink-0 items-center justify-center ${
-                        isExport ? 'h-[34px] min-w-[56px] px-1.5 text-[21px]' : 'h-[21px] min-w-[21px] px-[2px] text-[13px]'
+                        isExport ? 'h-[36px] min-w-[36px] px-1 text-[21px]' : 'h-[21px] min-w-[21px] px-[2px] text-[13px]'
                       }`}
                     >
-                      {isExport ? `${parseISO(cell.date).getMonth() + 1}/${day}` : day}
+                      {day}
                     </span>
                     {d > 0 && (
                       <span

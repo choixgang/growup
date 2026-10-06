@@ -30,7 +30,7 @@ export default function AuthPage() {
           <br />
           다이어리
         </p>
-        <p className="mt-3 text-[13px] text-ink-soft">부부가 함께 쓰는 우리 아기 식단표</p>
+        <p className="mt-3 text-[13px] text-ink-soft">함께 쓰는 우리 아기 식단표</p>
 
         <form onSubmit={submit} className="mt-8 flex flex-col gap-5">
           <label className="flex flex-col gap-1">
@@ -71,7 +71,7 @@ export default function AuthPage() {
           {mode === 'signin' ? '처음이에요 · 계정 만들기' : '이미 계정이 있어요 · 로그인'}
         </button>
       </div>
-      <p className="mt-6 text-center text-[12px] text-ink-faint">남편과 아내가 각자 계정으로 같은 아기를 함께 기록해요</p>
+      <p className="mt-6 text-center text-[12px] text-ink-faint">우리 아기를 함께 기록해요</p>
     </div>
   )
 }

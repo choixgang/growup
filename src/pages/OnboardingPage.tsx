@@ -58,7 +58,7 @@ export default function OnboardingPage() {
               />
               <ChoiceCard
                 icon={<Sprout size={22} strokeWidth={1.5} />}
-                title="우리 집에서 처음 시작해요"
+                title="처음 시작해요"
                 desc="아기를 등록하고 새 다이어리를 만들어요"
                 onClick={() => setStep('create')}
               />
@@ -75,8 +75,7 @@ export default function OnboardingPage() {
               <>
                 {repo.kind === 'supabase' && (
                   <p className="rounded-xl bg-rose-soft px-3 py-2 text-[12px] leading-relaxed text-ink-soft">
-                    배우자가 이미 다이어리를 만들었다면 새로 만들지 말고 <b>초대 코드로 참여</b>해 주세요. 그래야 같은
-                    기록을 함께 봐요.
+                    배우자가 이미 다이어리를 만들었다면 새로 만들지 말고 <b>초대 코드로 참여</b>해 주세요. 그래야 기록을 함께 봐요.
                   </p>
                 )}
                 <label className="flex flex-col gap-1">

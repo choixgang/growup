@@ -11,8 +11,8 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['icon.svg', 'apple-touch-icon.png'],
       manifest: {
-        name: '이유식 다이어리',
-        short_name: '이유식',
+        name: '이유식 캘린더',
+        short_name: '이유식 캘린더',
         description: '부부가 함께 쓰는 이유식 식단표',
         lang: 'ko',
         theme_color: '#f6efe5',

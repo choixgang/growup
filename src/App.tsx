@@ -1,9 +1,9 @@
 import { createContext, useContext } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
-import { useAppContext, useRealtime, useUser } from './data/hooks'
+import { useAppContext, useRealtime, useRecovering, useUser } from './data/hooks'
 import type { AppContext } from './data/repo'
 import { repo } from './data'
-import AuthPage from './pages/AuthPage'
+import AuthPage, { ResetPasswordPage } from './pages/AuthPage'
 import OnboardingPage from './pages/OnboardingPage'
 import MonthPage from './pages/MonthPage'
 import WeekPage from './pages/WeekPage'
@@ -21,8 +21,10 @@ export function useCtx(): AppContext {
 
 export default function App() {
   const user = useUser()
+  const recovering = useRecovering()
   const context = useAppContext(!!user)
 
+  if (user && recovering) return <ResetPasswordPage />
   if (user === undefined || (user && context.isLoading)) return <Splash />
   if (!user) return <AuthPage />
   if (context.isError) return <Splash message={(context.error as Error).message} />

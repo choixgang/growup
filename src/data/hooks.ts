@@ -14,6 +14,12 @@ export function useUser() {
   return user
 }
 
+export function useRecovering() {
+  const [recovering, setRecovering] = useState(repo.isRecovering())
+  useEffect(() => repo.onRecoveryChange(setRecovering), [])
+  return recovering
+}
+
 export function useAppContext(enabled: boolean) {
   return useQuery({ queryKey: ['context'], queryFn: () => repo.getContext(), enabled })
 }

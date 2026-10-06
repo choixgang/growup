@@ -24,6 +24,12 @@ export interface Repo {
   signIn(email: string, password: string): Promise<void>
   signOut(): Promise<void>
   changePassword(newPassword: string): Promise<void>
+  /** 비밀번호 재설정 메일 발송. 메일 링크는 앱으로 돌아온다 */
+  sendPasswordReset(email: string): Promise<void>
+  /** 재설정 메일 링크로 들어온 상태인지 (새 비밀번호를 정해야 함) */
+  isRecovering(): boolean
+  onRecoveryChange(cb: (recovering: boolean) => void): () => void
+  finishRecovery(): void
 
   // 가정·아기
   getContext(): Promise<AppContext | null>

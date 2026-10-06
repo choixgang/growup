@@ -43,14 +43,26 @@ function translateError(msg: string): string {
   if (msg.includes('Email logins are disabled') || msg.includes('Email signups are disabled'))
     return 'Supabase에서 이메일 로그인이 꺼져 있어요 (Authentication → Email 설정 확인)'
   if (msg.includes('email rate limit'))
-    return '가입 확인 메일을 보낼 수 있는 횟수를 넘었어요. 1시간쯤 뒤에 다시 시도해 주세요'
+    return '메일을 보낼 수 있는 횟수를 넘었어요. 1시간쯤 뒤에 다시 시도해 주세요'
   if (msg.includes('rate limit')) return '잠시 후 다시 시도해 주세요 (요청이 너무 많아요)'
   return msg
 }
 
 export function createSupabaseRepo(url: string, anonKey: string): Repo {
+  // 재설정 메일 링크(#...type=recovery)로 열렸는지는 클라이언트가 주소를 지우기 전에 확인해 둔다
+  let recovering = window.location.hash.includes('type=recovery')
+  const recoveryListeners = new Set<(r: boolean) => void>()
+  const setRecovering = (r: boolean) => {
+    recovering = r
+    recoveryListeners.forEach((cb) => cb(r))
+  }
+
   const sb: SupabaseClient = createClient(url, anonKey, {
     auth: { persistSession: true, autoRefreshToken: true },
+  })
+  sb.auth.onAuthStateChange((event) => {
+    if (event === 'PASSWORD_RECOVERY') setRecovering(true)
+    if (event === 'SIGNED_OUT') setRecovering(false)
   })
 
   return {
@@ -82,6 +94,15 @@ export function createSupabaseRepo(url: string, anonKey: string): Repo {
     async changePassword(newPassword) {
       check(await sb.auth.updateUser({ password: newPassword }))
     },
+    async sendPasswordReset(email) {
+      check(await sb.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin }))
+    },
+    isRecovering: () => recovering,
+    onRecoveryChange(cb) {
+      recoveryListeners.add(cb)
+      return () => recoveryListeners.delete(cb)
+    },
+    finishRecovery: () => setRecovering(false),
 
     async getContext(): Promise<AppContext | null> {
       const { data: session } = await sb.auth.getSession()

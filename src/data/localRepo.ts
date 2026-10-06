@@ -77,6 +77,16 @@ export function createLocalRepo(): Repo {
     async joinHousehold() {
       throw new Error('로컬 모드에서는 가정에 참여할 수 없어요.')
     },
+    async sendPasswordReset() {
+      throw new Error('로컬 모드에는 비밀번호가 없어요.')
+    },
+    isRecovering() {
+      return false
+    },
+    onRecoveryChange() {
+      return () => {}
+    },
+    finishRecovery() {},
     async getMemberCount() {
       return 1
     },

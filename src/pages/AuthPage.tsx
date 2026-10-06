@@ -53,27 +53,10 @@ export default function AuthPage() {
         <p className="font-batang text-[26px] leading-tight font-bold">이유식 다이어리</p>
         <p className="mt-1 text-[13px] text-ink-soft">함께 쓰는 우리 아기 식단표</p>
 
-        {mode === 'reset' ? (
+        {mode !== 'signin' && (
           <button className="-ml-1 mt-6 flex items-center gap-1 text-[13px] text-ink-soft" onClick={() => switchMode('signin')}>
             <ArrowLeft size={15} /> 로그인으로 돌아가기
           </button>
-        ) : (
-          <div className="mt-6 flex rounded-full bg-rose-soft p-1 text-[14px]" role="tablist">
-            {(['signin', 'signup'] as const).map((m) => (
-              <button
-                key={m}
-                type="button"
-                role="tab"
-                aria-selected={mode === m}
-                onClick={() => switchMode(m)}
-                className={`flex-1 rounded-full py-2 transition-colors ${
-                  mode === m ? 'bg-card font-bold shadow-sm' : 'text-ink-soft'
-                }`}
-              >
-                {m === 'signin' ? '로그인' : '계정 만들기'}
-              </button>
-            ))}
-          </div>
         )}
 
         <h1 className="font-batang mt-6 text-[20px] font-bold">{copy.heading}</h1>
@@ -134,9 +117,14 @@ export default function AuthPage() {
           </button>
         </form>
         {mode === 'signin' && (
-          <button className="btn btn-ghost mt-2 w-full text-[13px]" onClick={() => switchMode('reset')}>
-            비밀번호를 잊었어요
-          </button>
+          <div className="mt-3 flex flex-col items-center gap-1">
+            <button className="btn btn-soft w-full text-[14px]" onClick={() => switchMode('signup')}>
+              처음이에요 · 계정 만들기
+            </button>
+            <button className="btn btn-ghost w-full text-[13px]" onClick={() => switchMode('reset')}>
+              비밀번호를 잊었어요
+            </button>
+          </div>
         )}
       </div>
       <p className="mt-6 text-center text-[12px] text-ink-faint">우리 아기를 함께 기록해요</p>

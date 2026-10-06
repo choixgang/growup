@@ -28,7 +28,9 @@ export interface Repo {
   // 가정·아기
   getContext(): Promise<AppContext | null>
   createHousehold(babyName: string, birthDate: string): Promise<void>
+  /** 초대 코드로 참여. 이미 다른 다이어리에 있으면 그곳에서 나와 옮겨간다 */
   joinHousehold(inviteCode: string): Promise<void>
+  getMemberCount(householdId: string): Promise<number>
   updateBaby(babyId: string, patch: Pick<Baby, 'name' | 'birthDate'>): Promise<void>
   updateHousehold(householdId: string, patch: Partial<Pick<Household, 'testIntervalDays' | 'knownIngredients'>>): Promise<void>
 

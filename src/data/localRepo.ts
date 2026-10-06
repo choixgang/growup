@@ -77,6 +77,9 @@ export function createLocalRepo(): Repo {
     async joinHousehold() {
       throw new Error('로컬 모드에서는 가정에 참여할 수 없어요.')
     },
+    async getMemberCount() {
+      return 1
+    },
     async updateBaby(_id, patch) {
       const db = load()
       if (db.baby) db.baby = { ...db.baby, ...patch }

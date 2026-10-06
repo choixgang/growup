@@ -117,6 +117,11 @@ export function createSupabaseRepo(url: string, anonKey: string): Repo {
     async joinHousehold(inviteCode) {
       check(await sb.rpc('join_household', { code: inviteCode }))
     },
+    async getMemberCount(householdId) {
+      const res = await sb.from('household_members').select('user_id', { count: 'exact', head: true }).eq('household_id', householdId)
+      if (res.error) throw new Error(translateError(res.error.message))
+      return res.count ?? 0
+    },
     async updateBaby(babyId, patch) {
       check(await sb.from('babies').update({ name: patch.name, birth_date: patch.birthDate }).eq('id', babyId))
     },

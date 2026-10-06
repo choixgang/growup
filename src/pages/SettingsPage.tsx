@@ -1,8 +1,10 @@
 import { useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { Minus, Plus, X } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import { useCtx } from '../App'
 import { repo } from '../data'
+import { useMeals } from '../data/hooks'
 
 export default function SettingsPage() {
   const ctx = useCtx()
@@ -125,6 +127,8 @@ export default function SettingsPage() {
         </Section>
       ) : null}
 
+      {repo.kind === 'supabase' ? <JoinOtherDiary /> : null}
+
       {repo.kind === 'supabase' ? (
         <Section title="내 계정">
           <ChangePassword />
@@ -206,5 +210,85 @@ function ChangePassword() {
         {busy ? '바꾸는 중…' : '비밀번호 변경'}
       </button>
     </form>
+  )
+}
+
+/** 실수로 따로 시작했을 때, 배우자의 초대 코드로 그 다이어리로 옮겨간다 */
+function JoinOtherDiary() {
+  const ctx = useCtx()
+  const qc = useQueryClient()
+  const navigate = useNavigate()
+  const meals = useMeals(ctx.baby.id)
+  const [code, setCode] = useState('')
+  const [warning, setWarning] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault()
+    setError(null)
+    const clean = code.trim().toUpperCase()
+    if (clean.length !== 6) return setError('6자리 코드를 넣어주세요')
+    if (clean === ctx.household.inviteCode) return setError('지금 쓰고 있는 다이어리의 코드예요')
+
+    // 첫 번째 누름: 무엇이 사라지는지 알려주고 한 번 더 확인받는다
+    if (!warning) {
+      setBusy(true)
+      try {
+        const members = await repo.getMemberCount(ctx.household.id)
+        const n = meals.data?.length ?? 0
+        setWarning(
+          members <= 1
+            ? `지금 다이어리(${ctx.baby.name})는 나 혼자 쓰고 있어서, 옮기면 ${
+                n ? `기록된 끼니 ${n}개를 포함해 ` : ''
+              }모두 지워져요.`
+            : '지금 다이어리에서 나가요. 다른 구성원은 계속 쓸 수 있어요.',
+        )
+      } catch (err) {
+        setError((err as Error).message)
+      } finally {
+        setBusy(false)
+      }
+      return
+    }
+
+    setBusy(true)
+    try {
+      await repo.joinHousehold(clean)
+      qc.removeQueries()
+      await qc.invalidateQueries({ queryKey: ['context'] })
+      navigate('/', { replace: true })
+    } catch (err) {
+      setError((err as Error).message)
+      setBusy(false)
+    }
+  }
+
+  return (
+    <Section title="다른 다이어리에 참여">
+      <p className="text-[12px] leading-relaxed text-ink-soft">
+        배우자가 이미 다이어리를 쓰고 있었다면, 배우자의 초대 코드를 넣어 그 다이어리로 옮겨갈 수 있어요.
+      </p>
+      <form onSubmit={submit} className="mt-2 flex flex-col gap-2">
+        <input
+          className="field date-serif text-center text-[26px] tracking-[0.3em] uppercase"
+          placeholder="초대 코드"
+          maxLength={6}
+          autoCapitalize="characters"
+          autoComplete="off"
+          value={code}
+          onChange={(e) => {
+            setCode(e.target.value)
+            setWarning(null)
+            setError(null)
+          }}
+        />
+        {warning && <p className="rounded-xl bg-warn/10 px-3 py-2 text-[13px] text-warn">{warning}</p>}
+        {error && <p className="text-[13px] text-warn">{error}</p>}
+        <button className={`btn ${warning ? 'btn-primary' : 'btn-soft'}`} disabled={busy || !code.trim()}>
+          {busy ? '확인 중…' : warning ? '알겠어요, 옮겨갈게요' : '참여하기'}
+        </button>
+      </form>
+    </Section>
   )
 }

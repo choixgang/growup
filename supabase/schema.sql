@@ -120,13 +120,26 @@ begin
 end;
 $$;
 
+-- 이미 다른 다이어리에 있으면 그곳에서 나와 옮겨간다 (아무도 안 남은 다이어리는 삭제)
 create or replace function public.join_household(code text)
 returns uuid language plpgsql security definer set search_path = public as $$
-declare hid uuid;
+declare
+  hid uuid;
+  old_ids uuid[];
 begin
   if auth.uid() is null then raise exception '로그인이 필요해요'; end if;
   select id into hid from households where invite_code = upper(trim(code));
   if hid is null then raise exception '초대 코드를 찾을 수 없어요'; end if;
+
+  select coalesce(array_agg(household_id), '{}') into old_ids
+    from household_members where user_id = auth.uid() and household_id <> hid;
+
+  delete from household_members where user_id = auth.uid() and household_id <> hid;
+
+  delete from households h
+    where h.id = any(old_ids)
+      and not exists (select 1 from household_members m where m.household_id = h.id);
+
   insert into household_members (household_id, user_id) values (hid, auth.uid())
     on conflict do nothing;
   return hid;

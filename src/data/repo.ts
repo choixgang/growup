@@ -23,6 +23,7 @@ export interface Repo {
   signUp(email: string, password: string): Promise<void>
   signIn(email: string, password: string): Promise<void>
   signOut(): Promise<void>
+  changePassword(newPassword: string): Promise<void>
 
   // 가정·아기
   getContext(): Promise<AppContext | null>

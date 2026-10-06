@@ -58,6 +58,9 @@ export function createLocalRepo(): Repo {
     async signUp() {},
     async signIn() {},
     async signOut() {},
+    async changePassword() {
+      throw new Error('로컬 모드에는 비밀번호가 없어요.')
+    },
 
     async getContext(): Promise<AppContext | null> {
       const db = load()

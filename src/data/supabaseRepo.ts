@@ -36,6 +36,7 @@ function check<T>(res: { data: T; error: { message: string } | null } | { data: 
 function translateError(msg: string): string {
   if (msg.includes('Invalid login credentials')) return '이메일 또는 비밀번호가 맞지 않아요'
   if (msg.includes('User already registered')) return '이미 가입된 이메일이에요'
+  if (msg.includes('should be different from the old password')) return '지금 비밀번호와 다른 비밀번호를 입력해 주세요'
   if (msg.includes('Password should be')) return '비밀번호는 6자 이상이어야 해요'
   if (msg.includes('Email not confirmed')) return '메일함에서 가입 확인 링크를 먼저 눌러주세요'
   if (/Email address .* is invalid/.test(msg)) return '사용할 수 없는 이메일 주소예요'
@@ -75,6 +76,9 @@ export function createSupabaseRepo(url: string, anonKey: string): Repo {
     },
     async signOut() {
       await sb.auth.signOut()
+    },
+    async changePassword(newPassword) {
+      check(await sb.auth.updateUser({ password: newPassword }))
     },
 
     async getContext(): Promise<AppContext | null> {

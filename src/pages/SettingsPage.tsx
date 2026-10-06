@@ -122,7 +122,13 @@ export default function SettingsPage() {
         <Section title="배우자 초대">
           <p className="text-[12px] text-ink-soft">배우자가 가입한 뒤 '초대 코드로 참여'에 이 코드를 넣으면 함께 볼 수 있어요.</p>
           <p className="pen mt-2 text-center text-[40px] tracking-[0.3em]">{ctx.household.inviteCode}</p>
-          <button className="btn btn-ghost mt-2 w-full text-[13px]" onClick={() => repo.signOut()}>
+        </Section>
+      ) : null}
+
+      {repo.kind === 'supabase' ? (
+        <Section title="내 계정">
+          <ChangePassword />
+          <button className="btn btn-ghost mt-3 w-full text-[13px]" onClick={() => repo.signOut()}>
             로그아웃
           </button>
         </Section>
@@ -146,5 +152,59 @@ function Section({ title, children }: { title: string; children: React.ReactNode
       <h2 className="mb-2 text-[14px] font-bold">{title}</h2>
       {children}
     </section>
+  )
+}
+
+function ChangePassword() {
+  const [pw, setPw] = useState('')
+  const [pw2, setPw2] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null)
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault()
+    if (pw.length < 6) return setMsg({ ok: false, text: '비밀번호는 6자 이상이어야 해요' })
+    if (pw !== pw2) return setMsg({ ok: false, text: '두 비밀번호가 달라요' })
+    setBusy(true)
+    setMsg(null)
+    try {
+      await repo.changePassword(pw)
+      setPw('')
+      setPw2('')
+      setMsg({ ok: true, text: '비밀번호를 바꿨어요' })
+    } catch (err) {
+      setMsg({ ok: false, text: (err as Error).message })
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <form onSubmit={submit} className="flex flex-col gap-3">
+      <label className="flex flex-col gap-0.5">
+        <span className="text-[12px] text-ink-soft">새 비밀번호</span>
+        <input
+          className="field pen text-[20px]"
+          type="password"
+          autoComplete="new-password"
+          value={pw}
+          onChange={(e) => setPw(e.target.value)}
+        />
+      </label>
+      <label className="flex flex-col gap-0.5">
+        <span className="text-[12px] text-ink-soft">새 비밀번호 확인</span>
+        <input
+          className="field pen text-[20px]"
+          type="password"
+          autoComplete="new-password"
+          value={pw2}
+          onChange={(e) => setPw2(e.target.value)}
+        />
+      </label>
+      {msg && <p className={`text-[13px] ${msg.ok ? 'text-sage' : 'text-warn'}`}>{msg.text}</p>}
+      <button className="btn btn-soft" disabled={busy || !pw}>
+        {busy ? '바꾸는 중…' : '비밀번호 변경'}
+      </button>
+    </form>
   )
 }

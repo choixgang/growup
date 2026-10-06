@@ -170,7 +170,15 @@ function MealRow({
       </div>
       {log ? (
         <div className="mt-0.5 flex items-center gap-2 text-[12px] text-ink-soft">
-          {log.photoUrl && <img src={log.photoUrl} alt="" className="h-7 w-7 rounded object-cover" />}
+          {log.photoUrl && (
+            <img
+              src={log.photoThumbUrl ?? log.photoUrl}
+              alt=""
+              loading="lazy"
+              decoding="async"
+              className="h-7 w-7 rounded object-cover"
+            />
+          )}
           <span className="pen text-[17px]">
             {[
               log.eatenAmount && `먹은 양 ${log.eatenAmount}`,

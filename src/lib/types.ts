@@ -34,6 +34,8 @@ export interface MealLog {
   reactionNote: string
   preference: Preference | null
   photoUrl: string | null
+  /** 목록용 작은 사진. 예전 기록에는 없을 수 있어 photoUrl로 대신한다 */
+  photoThumbUrl?: string | null
   loggedAt: string
 }
 
@@ -75,6 +77,7 @@ export function emptyLog(): MealLog {
     reactionNote: '',
     preference: null,
     photoUrl: null,
+    photoThumbUrl: null,
     loggedAt: new Date().toISOString(),
   }
 }

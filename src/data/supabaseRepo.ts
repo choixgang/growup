@@ -177,7 +177,7 @@ export function createSupabaseRepo(url: string, anonKey: string): Repo {
     },
     async uploadPhoto(babyId, file) {
       const path = `${babyId}/${crypto.randomUUID()}.jpg`
-      check(await sb.storage.from('meal-photos').upload(path, file, { contentType: 'image/jpeg' }))
+      check(await sb.storage.from('meal-photos').upload(path, file, { contentType: 'image/jpeg', cacheControl: '31536000' }))
       return sb.storage.from('meal-photos').getPublicUrl(path).data.publicUrl
     },
 

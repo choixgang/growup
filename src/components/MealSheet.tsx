@@ -4,7 +4,7 @@ import { ko } from 'date-fns/locale'
 import { AlertTriangle, Camera, Plus, Trash2, X } from 'lucide-react'
 import { repo } from '../data'
 import { checkDraft } from '../lib/rules'
-import { compressImage } from '../lib/image'
+import { preparePhoto } from '../lib/image'
 import { circled } from '../lib/dates'
 import { emptyLog, type Meal, type MealItem, type MealLog, type Preference } from '../lib/types'
 
@@ -59,9 +59,12 @@ export default function MealSheet(props: Props) {
     setUploading(true)
     setError(null)
     try {
-      const blob = await compressImage(file)
-      const url = await repo.uploadPhoto(props.babyId, blob)
-      setLog((l) => ({ ...(l ?? emptyLog()), photoUrl: url }))
+      const { full, thumb } = await preparePhoto(file)
+      const [url, thumbUrl] = await Promise.all([
+        repo.uploadPhoto(props.babyId, full),
+        repo.uploadPhoto(props.babyId, thumb),
+      ])
+      setLog((l) => ({ ...(l ?? emptyLog()), photoUrl: url, photoThumbUrl: thumbUrl }))
     } catch (e) {
       setError((e as Error).message)
     } finally {
@@ -248,11 +251,11 @@ export default function MealSheet(props: Props) {
               />
               {log.photoUrl ? (
                 <div className="relative mt-1 w-fit rotate-[-1.5deg] bg-card p-2 pb-6 shadow-md">
-                  <img src={log.photoUrl} alt="" className="h-[150px] w-[150px] object-cover" />
+                  <img src={log.photoUrl} alt="" decoding="async" className="h-[150px] w-[150px] object-cover" />
                   <button
                     aria-label="사진 삭제"
                     className="absolute top-3 right-3 rounded-full bg-ink/60 p-1 text-paper"
-                    onClick={() => setLog({ ...log, photoUrl: null })}
+                    onClick={() => setLog({ ...log, photoUrl: null, photoThumbUrl: null })}
                   >
                     <X size={14} />
                   </button>

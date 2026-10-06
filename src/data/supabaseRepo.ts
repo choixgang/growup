@@ -38,6 +38,10 @@ function translateError(msg: string): string {
   if (msg.includes('User already registered')) return '이미 가입된 이메일이에요'
   if (msg.includes('Password should be')) return '비밀번호는 6자 이상이어야 해요'
   if (msg.includes('Email not confirmed')) return '메일함에서 가입 확인 링크를 먼저 눌러주세요'
+  if (/Email address .* is invalid/.test(msg)) return '사용할 수 없는 이메일 주소예요'
+  if (msg.includes('Email logins are disabled') || msg.includes('Email signups are disabled'))
+    return 'Supabase에서 이메일 로그인이 꺼져 있어요 (Authentication → Email 설정 확인)'
+  if (msg.includes('rate limit')) return '잠시 후 다시 시도해 주세요 (요청이 너무 많아요)'
   return msg
 }
 
@@ -58,7 +62,11 @@ export function createSupabaseRepo(url: string, anonKey: string): Repo {
       return () => data.subscription.unsubscribe()
     },
     async signUp(email, password) {
-      const res = await sb.auth.signUp({ email, password })
+      const res = await sb.auth.signUp({
+        email,
+        password,
+        options: { emailRedirectTo: window.location.origin },
+      })
       check(res)
       if (!res.data.session) throw new Error('가입 확인 메일을 보냈어요. 메일의 링크를 누른 뒤 로그인해 주세요.')
     },

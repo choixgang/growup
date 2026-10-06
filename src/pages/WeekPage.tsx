@@ -54,7 +54,7 @@ export default function WeekPage() {
           <button aria-label="이전 주" className="p-1" onClick={() => go(-1)}>
             <ChevronLeft size={18} />
           </button>
-          <span className="pen text-[20px] text-ink">
+          <span className="date-serif text-[17px] text-ink">
             {format(parseISO(dates[0]), 'M/d')} – {format(parseISO(dates[6]), 'M/d')}
           </span>
           <button aria-label="다음 주" className="p-1" onClick={() => go(1)}>
@@ -84,8 +84,8 @@ export default function WeekPage() {
                 }`}
               >
                 <span className="title-serif text-[14px] italic">{DAY_LABELS_EN[i]}</span>
-                <span className="pen text-[22px] leading-none">{parseISO(date).getDate()}</span>
-                <span className="pen mt-0.5 text-[12px] text-ink-soft">D+{dPlus(ctx.baby.birthDate, date)}</span>
+                <span className="date-serif text-[21px] leading-none">{parseISO(date).getDate()}</span>
+                <span className="date-serif mt-1 text-[11px] text-ink-soft">D+{dPlus(ctx.baby.birthDate, date)}</span>
               </div>
 
               <div

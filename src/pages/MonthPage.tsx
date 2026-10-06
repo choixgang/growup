@@ -45,8 +45,8 @@ export default function MonthPage() {
               <ChevronLeft size={18} />
             </button>
             <div className="flex h-[58px] w-[58px] flex-col items-center justify-center rounded-full bg-rose-soft">
-              <span className="title-serif text-[11px] leading-none text-ink-soft">{format(monthDate, 'yyyy')}</span>
-              <span className="pen text-[30px] leading-none">{format(monthDate, 'M')}월</span>
+              <span className="date-serif mb-1 text-[11px] leading-none text-ink-soft">{format(monthDate, 'yyyy')}</span>
+              <span className="date-serif text-[24px] leading-none">{format(monthDate, 'M')}월</span>
             </div>
             <button aria-label="다음 달" className="p-1 text-ink-soft" onClick={() => go(1)}>
               <ChevronRight size={18} />
@@ -96,7 +96,7 @@ export default function MonthPage() {
                   className="pen text-left text-[18px]"
                   onClick={() => navigate(`/week/${weekStartOf(w.date)}?d=${w.date}`)}
                 >
-                  {format(parseISO(w.date), 'M/d')} · {w.message}
+                  <span className="date-serif text-[15px] text-ink-soft">{format(parseISO(w.date), 'M/d')}</span> · {w.message}
                 </button>
               </li>
             ))}

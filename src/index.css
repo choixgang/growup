@@ -92,6 +92,14 @@ body {
     );
   }
 
+  /* 날짜·D+일수: 인쇄된 플래너처럼 세리프, 손글씨 내용과 구분 */
+  .date-serif {
+    font-family: var(--font-serif);
+    font-weight: 500;
+    font-variant-numeric: lining-nums tabular-nums;
+    letter-spacing: 0;
+  }
+
   /* 손으로 그린 듯한 날짜 동그라미 */
   .hand-circle {
     border: 1.2px solid var(--color-ink-soft);

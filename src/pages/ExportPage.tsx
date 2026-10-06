@@ -232,8 +232,8 @@ function SheetHeader({ month, babyName, children }: { month: string; babyName: s
     <div className="flex items-start justify-between gap-10">
       <div className="flex items-center gap-8">
         <div className="flex h-[150px] w-[150px] shrink-0 flex-col items-center justify-center rounded-full bg-[#e9e2da]">
-          <span className="title-serif text-[22px] text-ink-soft">{format(d, 'yyyy')}</span>
-          <span className="pen text-[64px] leading-none">{format(d, 'M')}월</span>
+          <span className="date-serif mb-2 text-[22px] leading-none text-ink-soft">{format(d, 'yyyy')}</span>
+          <span className="date-serif text-[52px] leading-none">{format(d, 'M')}월</span>
         </div>
         <div>
           <p className="font-batang text-[52px] leading-none font-bold whitespace-nowrap">이유식 식단표</p>

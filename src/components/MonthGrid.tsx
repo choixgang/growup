@@ -77,16 +77,16 @@ export default function MonthGrid({ month, meals, analysis, birthDate, variant, 
                 >
                   <div className={isExport ? 'flex items-center gap-1' : 'flex flex-col items-start'}>
                     <span
-                      className={`hand-circle pen inline-flex shrink-0 items-center justify-center ${
-                        isExport ? 'h-[34px] min-w-[54px] px-1.5 text-[24px]' : 'h-[21px] min-w-[21px] px-[2px] text-[16px]'
+                      className={`hand-circle date-serif inline-flex shrink-0 items-center justify-center ${
+                        isExport ? 'h-[34px] min-w-[56px] px-1.5 text-[21px]' : 'h-[21px] min-w-[21px] px-[2px] text-[13px]'
                       }`}
                     >
                       {isExport ? `${parseISO(cell.date).getMonth() + 1}/${day}` : day}
                     </span>
                     {d > 0 && (
                       <span
-                        className={`pen whitespace-nowrap text-ink-soft ${
-                          isExport ? 'text-[20px]' : 'mt-[1px] text-[11.5px] leading-none text-ink-faint'
+                        className={`date-serif whitespace-nowrap text-ink-soft ${
+                          isExport ? 'text-[17px]' : 'mt-[2px] text-[10px] leading-none'
                         }`}
                       >
                         D+{d}

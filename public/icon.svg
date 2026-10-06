@@ -1,1 +1,13 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" rx="96" fill="#f6f0e6"/><rect x="96" y="120" width="320" height="300" rx="20" fill="#fffdf8" stroke="#d9c3b0" stroke-width="8"/><rect x="96" y="120" width="320" height="56" rx="20" fill="#e8d3c4"/><rect x="180" y="86" width="150" height="54" rx="6" fill="#e9b8b0" opacity=".85" transform="rotate(-4 255 113)"/><circle cx="200" cy="270" r="30" fill="none" stroke="#7a5c4f" stroke-width="8"/><path d="M270 250 q30 -10 60 0 M270 290 q25 -8 50 0" stroke="#b9877a" stroke-width="10" fill="none" stroke-linecap="round"/></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <rect width="1024" height="1024" fill="#f6efe5"/>
+  <!-- 색 테이프 세 줄 (새 재료 테스트 띠) -->
+  <rect x="150" y="610" width="520" height="70" fill="#c9d8b6" opacity=".9" transform="rotate(-3 410 645)"/>
+  <rect x="300" y="700" width="560" height="70" fill="#f1d9a7" opacity=".9" transform="rotate(2 580 735)"/>
+  <rect x="180" y="790" width="440" height="70" fill="#e9b8b0" opacity=".9" transform="rotate(-2 400 825)"/>
+  <!-- 숟가락 -->
+  <g transform="rotate(-50 512 380)">
+    <rect x="494" y="360" width="36" height="330" rx="18" fill="#7a5c4f"/>
+    <ellipse cx="512" cy="250" rx="96" ry="130" fill="#7a5c4f"/>
+    <ellipse cx="512" cy="244" rx="70" ry="102" fill="#fffaf2"/>
+  </g>
+</svg>

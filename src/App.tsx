@@ -61,7 +61,7 @@ function Shell({ ctx }: { ctx: AppContext }) {
 function Splash({ message }: { message?: string }) {
   return (
     <div className="flex min-h-dvh flex-col items-center justify-center gap-3 px-6 text-center">
-      <p className="title-serif text-4xl italic">Mamma Diary</p>
+      <p className="font-batang text-3xl">이유식 다이어리</p>
       <p className="text-sm text-ink-soft">{message ?? '불러오는 중…'}</p>
     </div>
   )

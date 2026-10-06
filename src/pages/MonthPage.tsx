@@ -52,11 +52,6 @@ export default function MonthPage() {
               <ChevronRight size={18} />
             </button>
           </div>
-          <p className="title-serif pr-1 text-right text-[12px] leading-tight text-ink-soft italic">
-            Mamma Diary
-            <br />
-            <span className="not-italic">매일 매일 기록하는 이유식</span>
-          </p>
         </div>
         {note.data && (
           <div className="mt-3 px-1">

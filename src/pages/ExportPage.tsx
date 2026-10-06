@@ -192,7 +192,7 @@ function PaperSheet({ month, children }: { month: string; children: React.ReactN
     <div className="relative" style={{ transform: `rotate(${tilt}deg)` }}>
       {/* 종이 그림자: 벽에서 살짝 떠 있는 느낌 */}
       <div
-        className="relative px-[64px] pt-[70px] pb-[56px]"
+        className="relative px-[64px] pt-[70px] pb-[64px]"
         style={{
           backgroundColor: '#fdfbf6',
           backgroundImage:
@@ -203,7 +203,6 @@ function PaperSheet({ month, children }: { month: string; children: React.ReactN
         }}
       >
         {children}
-        <p className="title-serif mt-8 text-center text-[17px] text-ink-soft italic">Mamma Diary</p>
       </div>
       <Tape className="-top-[26px] left-1/2 w-[220px] -translate-x-1/2 rotate-[-2.5deg]" color="#eab8b4" />
       <Tape className="-top-[18px] -left-[42px] w-[150px] rotate-[-38deg]" color="#e4d3b8" />
@@ -237,8 +236,8 @@ function SheetHeader({ month, babyName, children }: { month: string; babyName: s
           <span className="pen text-[64px] leading-none">{format(d, 'M')}월</span>
         </div>
         <div>
-          <p className="title-serif text-[64px] leading-none">Mamma Diary</p>
-          <p className="mt-2 text-[19px] text-ink-soft">매일 매일 기록하는 우리 {babyName} 이유식</p>
+          <p className="font-batang text-[52px] leading-none font-bold whitespace-nowrap">이유식 식단표</p>
+          <p className="mt-3 text-[20px] text-ink-soft">{babyName} · 우리가 함께 기록한 한 달</p>
         </div>
       </div>
       <div className="w-[560px] pt-2">{children}</div>

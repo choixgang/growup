@@ -25,9 +25,12 @@ export default function AuthPage() {
   return (
     <div className="mx-auto flex min-h-dvh max-w-[420px] flex-col justify-center px-6">
       <div className="paper-texture rounded-[28px] px-7 pt-10 pb-8 shadow-[0_10px_30px_rgba(90,60,40,0.10)]">
-        <p className="title-serif text-[44px] leading-none italic">Mamma</p>
-        <p className="title-serif -mt-1 pl-10 text-[44px] leading-none">Diary</p>
-        <p className="mt-3 text-[13px] text-ink-soft">매일 매일 기록하는 우리 아기 이유식</p>
+        <p className="font-batang text-[34px] leading-tight font-bold">
+          이유식
+          <br />
+          다이어리
+        </p>
+        <p className="mt-3 text-[13px] text-ink-soft">부부가 함께 쓰는 우리 아기 식단표</p>
 
         <form onSubmit={submit} className="mt-8 flex flex-col gap-5">
           <label className="flex flex-col gap-1">

@@ -1,0 +1,162 @@
+@import 'tailwindcss';
+
+@theme {
+  --color-desk: #e7ddd0; /* 바깥 배경 (책상) */
+  --color-paper: #faf6ef; /* 플래너 종이 */
+  --color-card: #fffdf9;
+  --color-line: #e8dccf;
+  --color-line-strong: #d6c4b3;
+  --color-rose: #dcbcaa; /* 로즈베이지 포인트 */
+  --color-rose-soft: #efe0d5;
+  --color-rose-deep: #b98f7c;
+  --color-ink: #4f413a; /* 펜 잉크 */
+  --color-ink-soft: #8a776b;
+  --color-ink-faint: #b4a397;
+  --color-warn: #c0735f;
+  --color-sage: #8fa27f;
+
+  --font-serif: 'Cormorant Garamond', 'Gowun Batang', serif;
+  --font-batang: 'Gowun Batang', serif;
+  --font-pen: 'Nanum Pen Script', 'Gowun Batang', cursive;
+}
+
+:root {
+  color-scheme: light;
+}
+
+html,
+body {
+  background-color: var(--color-desk);
+  color: var(--color-ink);
+  font-family: var(--font-batang);
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior-y: none;
+}
+
+body {
+  min-height: 100dvh;
+}
+
+@layer base {
+  input,
+  textarea,
+  select,
+  button {
+    font: inherit;
+    color: inherit;
+  }
+
+  input:focus,
+  textarea:focus,
+  select:focus {
+    outline: none;
+  }
+}
+
+@layer components {
+  /* 펜글씨는 획이 가늘고 작아 보여서 한 단계 크게, 잉크색으로 */
+  .pen {
+    font-family: var(--font-pen);
+    font-size: 1.22em;
+    line-height: 1.15;
+    letter-spacing: 0.01em;
+  }
+
+  .title-serif {
+    font-family: var(--font-serif);
+    font-weight: 500;
+    letter-spacing: -0.01em;
+  }
+
+  /* 종이 질감: 아주 옅은 섬유 노이즈 */
+  .paper-texture {
+    background-color: var(--color-paper);
+    background-image:
+      radial-gradient(rgba(120, 90, 60, 0.035) 1px, transparent 1px),
+      radial-gradient(rgba(120, 90, 60, 0.025) 1px, transparent 1px);
+    background-size: 7px 7px, 11px 11px;
+    background-position: 0 0, 3px 5px;
+  }
+
+  /* 마스킹테이프: 반투명 + 양 끝 지그재그 */
+  .tape {
+    opacity: 0.82;
+    clip-path: polygon(
+      0% 8%, 3% 0%, 6% 10%, 9% 0%, 100% 0%, 97% 12%, 100% 25%, 97% 38%, 100% 50%, 97% 62%, 100% 75%, 97% 88%,
+      100% 100%, 0% 100%, 3% 88%, 0% 75%, 3% 62%, 0% 50%, 3% 38%, 0% 25%, 3% 12%
+    );
+    background-image: repeating-linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0.18) 0 2px,
+      transparent 2px 6px
+    );
+  }
+
+  /* 손으로 그린 듯한 날짜 동그라미 */
+  .hand-circle {
+    border: 1.2px solid var(--color-ink-soft);
+    border-radius: 48% 52% 50% 50% / 55% 48% 52% 45%;
+  }
+
+  .field {
+    width: 100%;
+    border-bottom: 1px dashed var(--color-line-strong);
+    background: transparent;
+    padding: 4px 2px;
+  }
+  .field:focus {
+    border-bottom-color: var(--color-rose-deep);
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    border-radius: 999px;
+    padding: 10px 18px;
+    font-size: 15px;
+    transition: transform 0.1s ease, background-color 0.15s ease;
+  }
+  .btn:active {
+    transform: scale(0.97);
+  }
+  .btn-primary {
+    background: var(--color-ink);
+    color: var(--color-paper);
+  }
+  .btn-soft {
+    background: var(--color-rose-soft);
+    color: var(--color-ink);
+  }
+  .btn-ghost {
+    color: var(--color-ink-soft);
+  }
+  .btn:disabled {
+    opacity: 0.5;
+  }
+}
+
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+@keyframes sheet-up {
+  from {
+    transform: translateY(24px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+.sheet-up {
+  animation: sheet-up 0.22s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sheet-up {
+    animation: none;
+  }
+}

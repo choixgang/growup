@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { Minus, Plus, X } from 'lucide-react'
-import { useNavigate } from 'react-router-dom'
 import { useCtx } from '../App'
 import { repo } from '../data'
 import { useMeals } from '../data/hooks'
@@ -123,7 +122,7 @@ export default function SettingsPage() {
       {repo.kind === 'supabase' ? (
         <Section title="배우자 초대">
           <p className="text-[12px] text-ink-soft">배우자가 가입한 뒤 '초대 코드로 참여'에 이 코드를 넣으면 함께 볼 수 있어요.</p>
-          <p className="pen mt-2 text-center text-[40px] tracking-[0.3em]">{ctx.household.inviteCode}</p>
+          <p className="date-serif mt-2 text-center text-[34px] tracking-[0.3em] select-all">{ctx.household.inviteCode}</p>
         </Section>
       ) : null}
 
@@ -216,8 +215,6 @@ function ChangePassword() {
 /** 실수로 따로 시작했을 때, 배우자의 초대 코드로 그 다이어리로 옮겨간다 */
 function JoinOtherDiary() {
   const ctx = useCtx()
-  const qc = useQueryClient()
-  const navigate = useNavigate()
   const meals = useMeals(ctx.baby.id)
   const [code, setCode] = useState('')
   const [warning, setWarning] = useState<string | null>(null)
@@ -255,9 +252,8 @@ function JoinOtherDiary() {
     setBusy(true)
     try {
       await repo.joinHousehold(clean)
-      qc.removeQueries()
-      await qc.invalidateQueries({ queryKey: ['context'] })
-      navigate('/', { replace: true })
+      // 아기·실시간 구독·캐시가 모두 바뀌므로 앱을 새로 연다
+      window.location.replace('/')
     } catch (err) {
       setError((err as Error).message)
       setBusy(false)

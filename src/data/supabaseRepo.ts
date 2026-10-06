@@ -42,6 +42,8 @@ function translateError(msg: string): string {
   if (/Email address .* is invalid/.test(msg)) return '사용할 수 없는 이메일 주소예요'
   if (msg.includes('Email logins are disabled') || msg.includes('Email signups are disabled'))
     return 'Supabase에서 이메일 로그인이 꺼져 있어요 (Authentication → Email 설정 확인)'
+  if (msg.includes('email rate limit'))
+    return '가입 확인 메일을 보낼 수 있는 횟수를 넘었어요. 1시간쯤 뒤에 다시 시도해 주세요'
   if (msg.includes('rate limit')) return '잠시 후 다시 시도해 주세요 (요청이 너무 많아요)'
   return msg
 }

@@ -30,6 +30,8 @@ body {
   color: var(--color-ink);
   font-family: var(--font-batang);
   -webkit-tap-highlight-color: transparent;
+  word-break: keep-all; /* 한글을 단어 단위로 줄바꿈 */
+  overflow-wrap: anywhere;
   overscroll-behavior-y: none;
 }
 

@@ -37,3 +37,13 @@ describe('ingredientsFromTitle', () => {
     expect(ingredientsFromTitle('닭안심단호박죽', ['닭안심'])).toEqual(['닭안심', '단호박'])
   })
 })
+
+describe('newIngredientSuggestions', () => {
+  it('안 먹어본 재료 중 어울리는 대표 재료를 권한다', async () => {
+    const { newIngredientSuggestions } = await import('./pairings')
+    const s = newIngredientSuggestions(['쌀'], ['쌀'])
+    expect(s[0].for).toBe('쌀')
+    expect(s[0].names).toContain('두부')
+    expect(newIngredientSuggestions(['쌀'], ['쌀', '두부', '완두콩']).flatMap((x) => x.names)).not.toContain('두부')
+  })
+})

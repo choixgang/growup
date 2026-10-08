@@ -4,8 +4,8 @@ import { format, parseISO } from 'date-fns'
 import { ko } from 'date-fns/locale'
 import { AlertTriangle, Camera, Plus, Trash2, X } from 'lucide-react'
 import { repo } from '../data'
-import { checkDraft, normalizeName } from '../lib/rules'
-import { pairingNotes, pairingSuggestions } from '../lib/pairings'
+import { analyzeIngredients, checkDraft, normalizeName } from '../lib/rules'
+import { newIngredientSuggestions, pairingNotes, pairingSuggestions } from '../lib/pairings'
 import ReactionIcon from './ReactionIcon'
 import { ingredientsFromTitle } from '../lib/ingredients'
 import { preparePhoto } from '../lib/image'
@@ -65,10 +65,29 @@ export default function MealSheet(props: Props) {
 
   const itemNames = cleanItems.map((i) => i.name)
   const pairs = useMemo(() => pairingNotes(itemNames), [itemNames.join('|')])
-  const suggestions = useMemo(
-    () => pairingSuggestions(itemNames, props.ingredientNames),
-    [itemNames.join('|'), props.ingredientNames],
-  )
+  // 추천은 이 날짜 '이전'에 먹은(계획한) 재료 기준. 나중 날짜의 재료를 먹어본 것으로 치지 않는다
+  const eatenBefore = useMemo(() => {
+    const names = new Map(props.knownIngredients.map((n) => [normalizeName(n), n.trim()]))
+    for (const m of props.allMeals) {
+      if (m.id === meal?.id || m.date >= date) continue
+      for (const it of m.items) if (it.name.trim() && !names.has(normalizeName(it.name))) names.set(normalizeName(it.name), it.name.trim())
+    }
+    return names
+  }, [props.allMeals, props.knownIngredients, meal?.id, date])
+  // 끼니에 새 재료가 없고 다른 새 재료 테스트 기간도 아니면, 안 먹어본 재료도 권한다
+  const canTryNew = useMemo(() => {
+    if (cleanItems.some((i) => !eatenBefore.has(normalizeName(i.name)))) return false
+    const others = props.allMeals.filter((m) => m.id !== meal?.id)
+    return !analyzeIngredients(others, props.intervalDays, props.knownIngredients).tests.some(
+      (t) => t.start <= date && date <= t.end,
+    )
+  }, [JSON.stringify(cleanItems), eatenBefore, props.allMeals, meal?.id, date, props.intervalDays, props.knownIngredients])
+  const suggestions = useMemo(() => {
+    const eaten = [...eatenBefore.values()]
+    const tried = pairingSuggestions(itemNames, eaten).map((s) => ({ ...s, isNew: false }))
+    const fresh = canTryNew ? newIngredientSuggestions(itemNames, eaten).map((s) => ({ ...s, isNew: true })) : []
+    return [...tried, ...fresh]
+  }, [itemNames.join('|'), eatenBefore, canTryNew])
 
   // 예전 기록(끼니 전체 반응)은 재료별 반응을 하나도 안 골랐을 때만 그 값을 유지한다
   // 죽은 재료별로 알아채기 어려워 끼니 전체의 기호도·이상 반응만 받는다
@@ -318,12 +337,12 @@ export default function MealSheet(props: Props) {
               </p>
             ))}
             {suggestions.map((s) => (
-              <p key={s.for} className="mt-0.5 text-[12px] text-ink-soft">
-                {s.for}와(과) 어울리는 먹어본 재료:{' '}
+              <p key={`${s.for}-${s.isNew}`} className="mt-0.5 text-[12px] text-ink-soft">
+                {s.for}와(과) 어울리는 {s.isNew ? '새 재료로 시도해볼 재료' : '먹어본 재료'}:{' '}
                 {s.names.map((n, i) => (
                   <button
                     key={n}
-                    className="text-sage underline decoration-dotted underline-offset-2"
+                    className={`underline decoration-dotted underline-offset-2 ${s.isNew ? 'text-rose-deep' : 'text-sage'}`}
                     onClick={() =>
                       setItems((prev) => [...prev.filter((it) => it.name.trim()), { name: n, grams: null }])
                     }

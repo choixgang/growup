@@ -101,3 +101,36 @@ export function pairingSuggestions(names: string[], eaten: string[], limit = 4):
   }
   return out.slice(0, 2)
 }
+
+// 새 재료로 권할 때는 별칭 대신 흔히 쓰는 대표 이름만 쓴다
+const STARTER_FOODS = [
+  '소고기', '닭고기', '흰살생선', '브로콜리', '양배추', '콜리플라워', '감자', '토마토', '무', '배추', '청경채',
+  '시금치', '단호박', '당근', '고구마', '애호박', '오트밀', '두부', '완두콩', '달걀노른자', '사과', '배', '바나나', '아보카도',
+]
+
+/**
+ * 아직 안 먹어본 재료 중 이 끼니 재료와 잘 어울리는 것. 새 재료를 시작해도 되는 때에만 쓴다
+ * (끼니에 새 재료가 없고, 다른 새 재료 테스트 기간이 아닐 때).
+ */
+export function newIngredientSuggestions(names: string[], eaten: string[], limit = 3): { for: string; names: string[] }[] {
+  const inMeal = new Set(names.map(normalizeName))
+  const eatenKeys = eaten.map(normalizeName)
+  const tried = (k: string) => eatenKeys.some((e) => e === k || e.includes(k) || k.includes(e))
+  const out: { for: string; names: string[] }[] = []
+  for (const name of names) {
+    const key = normalizeName(name)
+    if (!key) continue
+    const picks = new Set<string>()
+    for (const rule of PAIRING_RULES) {
+      if (rule.kind !== 'good') continue
+      const partners = matches(key, rule.a) ? rule.b : matches(key, rule.b) ? rule.a : null
+      if (!partners) continue
+      for (const food of STARTER_FOODS) {
+        const fk = normalizeName(food)
+        if (fk !== key && !inMeal.has(fk) && !tried(fk) && matches(fk, partners)) picks.add(food)
+      }
+    }
+    if (picks.size) out.push({ for: name.trim(), names: [...picks].slice(0, limit) })
+  }
+  return out.slice(0, 2)
+}

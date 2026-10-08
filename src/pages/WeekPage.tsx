@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { addDays, format, parseISO } from 'date-fns'
-import { AlertTriangle, ChevronLeft, ChevronRight, Copy, Plus, Trash2, X } from 'lucide-react'
+import { AlertTriangle, ChevronLeft, ChevronRight, Copy, Download, Plus, Trash2, X } from 'lucide-react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useCtx } from '../App'
 import CopyMealSheet from '../components/CopyMealSheet'
 import MealSheet from '../components/MealSheet'
 import BabySwitcher from '../components/BabySwitcher'
+import ImportMealsSheet from '../components/ImportMealsSheet'
 import {
   useAnalysis,
   useDeleteMeal,
@@ -36,6 +37,7 @@ export default function WeekPage() {
   const deleteMeal = useDeleteMeal(ctx.baby.id)
   const [editing, setEditing] = useState<{ date: string; slot: number; meal: Meal | null } | null>(null)
   const [copying, setCopying] = useState<Meal | null>(null)
+  const [importing, setImporting] = useState(false)
   const [openRow, setOpenRow] = useState<string | null>(null)
   const [toast, setToast] = useState<{ text: string; undo?: Meal } | null>(null)
   useEffect(() => {
@@ -87,8 +89,11 @@ export default function WeekPage() {
   return (
     <div className="px-3 pt-[max(14px,env(safe-area-inset-top))]">
       {ctx.babies.length > 1 && (
-        <div className="px-1 pb-1">
+        <div className="flex items-center justify-between px-1 pb-1">
           <BabySwitcher />
+          <button className="flex items-center gap-1 text-[12px] text-rose-deep" onClick={() => setImporting(true)}>
+            <Download size={14} /> 다른 아이 식단 불러오기
+          </button>
         </div>
       )}
       <header className="flex items-end justify-between px-1">
@@ -165,6 +170,15 @@ export default function WeekPage() {
       </section>
 
       <WeekNotes babyId={ctx.baby.id} weekStart={weekStart} />
+
+      {importing && (
+        <ImportMealsSheet
+          weekDates={dates}
+          targetMeals={meals.data ?? []}
+          onClose={() => setImporting(false)}
+          onDone={(n) => setToast({ text: `식단 ${n}끼를 불러왔어요` })}
+        />
+      )}
 
       {copying && (
         <CopyMealSheet meal={copying} onCopy={(d) => copyMeal(copying, d)} onClose={() => setCopying(null)} />

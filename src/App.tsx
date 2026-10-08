@@ -51,6 +51,7 @@ function Shell({ ctx }: { ctx: AppContext }) {
           <Route path="/week/:start" element={<WeekPage />} />
           <Route path="/week" element={<WeekPage />} />
           <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/settings/:menu" element={<SettingsPage />} />
           <Route path="/export/:month" element={<ExportPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

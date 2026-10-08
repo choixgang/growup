@@ -1,31 +1,141 @@
 import { useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { Minus, Plus, X } from 'lucide-react'
+import { ArrowLeft, Baby, ChevronRight, CookingPot, Minus, Plus, UserRound, Users, X } from 'lucide-react'
+import { Link, Navigate, useParams } from 'react-router-dom'
 import { useCtx } from '../App'
 import { repo } from '../data'
-import { useMeals } from '../data/hooks'
+import { useMeals, useUser } from '../data/hooks'
 import StylePicker from '../components/StylePicker'
+import { FEEDING_STYLE_LABEL } from '../lib/types'
 
+type MenuKey = 'baby' | 'feeding' | 'share' | 'account'
+
+const MENU_TITLE: Record<MenuKey, string> = {
+  baby: '아기 정보',
+  feeding: '이유식 설정',
+  share: '함께 쓰기',
+  account: '내 계정',
+}
+
+/** 설정은 종류별 메뉴 → 각 메뉴 화면 (/settings/:menu) */
 export default function SettingsPage() {
+  const { menu } = useParams()
+  if (!menu) return <SettingsMenu />
+  if (!(menu in MENU_TITLE)) return <Navigate to="/settings" replace />
+  const key = menu as MenuKey
+  return (
+    <div className="px-4 pt-[max(14px,env(safe-area-inset-top))] pb-6">
+      <Link to="/settings" replace className="-ml-1 flex w-fit items-center gap-1 text-[13px] text-ink-soft">
+        <ArrowLeft size={15} /> Settings
+      </Link>
+      <h1 className="mt-1 text-[22px] font-bold">{MENU_TITLE[key]}</h1>
+      {key === 'baby' && <BabySettings />}
+      {key === 'feeding' && <FeedingSettings />}
+      {key === 'share' && <ShareSettings />}
+      {key === 'account' && <AccountSettings />}
+    </div>
+  )
+}
+
+function SettingsMenu() {
   const ctx = useCtx()
+  const user = useUser()
+  const h = ctx.household
+  const birth = ctx.baby.birthDate.replace(/-/g, '.')
+  const items: { key: MenuKey; icon: React.ReactNode; desc: string }[] = [
+    { key: 'baby', icon: <Baby size={20} strokeWidth={1.5} />, desc: `${ctx.baby.name} · ${birth}` },
+    {
+      key: 'feeding',
+      icon: <CookingPot size={20} strokeWidth={1.5} />,
+      desc: `${FEEDING_STYLE_LABEL[h.feedingStyle]} 이유식 · 새 재료 간격 ${h.testIntervalDays}일 · 먹어본 재료 ${h.knownIngredients.length}개`,
+    },
+    {
+      key: 'share',
+      icon: <Users size={20} strokeWidth={1.5} />,
+      desc: repo.kind === 'supabase' ? `초대 코드 ${h.inviteCode} · 다른 다이어리 참여` : '이 기기에만 저장 중',
+    },
+    ...(repo.kind === 'supabase'
+      ? [{ key: 'account' as const, icon: <UserRound size={20} strokeWidth={1.5} />, desc: user?.email ?? '비밀번호 · 로그아웃' }]
+      : []),
+  ]
+
+  return (
+    <div className="px-4 pt-[max(14px,env(safe-area-inset-top))]">
+      <h1 className="title-serif text-[42px] leading-[0.95] italic">Settings</h1>
+      <nav className="paper-texture mt-4 overflow-hidden rounded-[20px] shadow-[0_4px_16px_rgba(90,60,40,0.06)]">
+        {items.map((it, i) => (
+          <Link
+            key={it.key}
+            to={`/settings/${it.key}`}
+            className={`flex items-center gap-3 px-4 py-3.5 active:bg-rose-soft ${i ? 'border-t border-line' : ''}`}
+          >
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-rose-soft text-rose-deep">
+              {it.icon}
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-[15px] font-bold">{MENU_TITLE[it.key]}</span>
+              <span className="mt-0.5 block truncate text-[12px] text-ink-soft">{it.desc}</span>
+            </span>
+            <ChevronRight size={18} className="shrink-0 text-ink-faint" />
+          </Link>
+        ))}
+      </nav>
+    </div>
+  )
+}
+
+/** 저장 후 앱 정보(context)를 다시 불러오고 결과 메시지를 보여준다 */
+function useRun() {
   const qc = useQueryClient()
-  const [name, setName] = useState(ctx.baby.name)
-  const [birth, setBirth] = useState(ctx.baby.birthDate)
-  const [known, setKnown] = useState('')
   const [msg, setMsg] = useState<string | null>(null)
-
-  const refresh = () => qc.invalidateQueries({ queryKey: ['context'] })
-
   async function run(fn: () => Promise<void>, done?: string) {
     setMsg(null)
     try {
       await fn()
-      await refresh()
+      await qc.invalidateQueries({ queryKey: ['context'] })
       if (done) setMsg(done)
     } catch (e) {
       setMsg((e as Error).message)
     }
   }
+  const message = msg ? <p className="mt-4 text-center text-[13px] text-ink-soft">{msg}</p> : null
+  return { run, message }
+}
+
+function BabySettings() {
+  const ctx = useCtx()
+  const { run, message } = useRun()
+  const [name, setName] = useState(ctx.baby.name)
+  const [birth, setBirth] = useState(ctx.baby.birthDate)
+  return (
+    <>
+      <Section title="아기">
+        <label className="flex flex-col gap-0.5">
+          <span className="text-[12px] text-ink-soft">이름</span>
+          <input className="field pen text-[22px]" value={name} onChange={(e) => setName(e.target.value)} />
+        </label>
+        <label className="mt-3 flex flex-col gap-0.5">
+          <span className="text-[12px] text-ink-soft">태어난 날</span>
+          <input className="field pen text-[22px]" type="date" value={birth} onChange={(e) => setBirth(e.target.value)} />
+        </label>
+        {(name !== ctx.baby.name || birth !== ctx.baby.birthDate) && (
+          <button
+            className="btn btn-primary mt-3 w-full"
+            onClick={() => run(() => repo.updateBaby(ctx.baby.id, { name: name.trim(), birthDate: birth }), '저장했어요')}
+          >
+            저장
+          </button>
+        )}
+      </Section>
+      {message}
+    </>
+  )
+}
+
+function FeedingSettings() {
+  const ctx = useCtx()
+  const { run, message } = useRun()
+  const [known, setKnown] = useState('')
 
   const interval = ctx.household.testIntervalDays
   const setInterval = (v: number) =>
@@ -46,28 +156,7 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="px-4 pt-[max(14px,env(safe-area-inset-top))]">
-      <h1 className="title-serif text-[42px] leading-[0.95] italic">Settings</h1>
-
-      <Section title="아기">
-        <label className="flex flex-col gap-0.5">
-          <span className="text-[12px] text-ink-soft">이름</span>
-          <input className="field pen text-[22px]" value={name} onChange={(e) => setName(e.target.value)} />
-        </label>
-        <label className="mt-3 flex flex-col gap-0.5">
-          <span className="text-[12px] text-ink-soft">태어난 날</span>
-          <input className="field pen text-[22px]" type="date" value={birth} onChange={(e) => setBirth(e.target.value)} />
-        </label>
-        {(name !== ctx.baby.name || birth !== ctx.baby.birthDate) && (
-          <button
-            className="btn btn-primary mt-3 w-full"
-            onClick={() => run(() => repo.updateBaby(ctx.baby.id, { name: name.trim(), birthDate: birth }), '저장했어요')}
-          >
-            저장
-          </button>
-        )}
-      </Section>
-
+    <>
       <Section title="이유식 방식">
         <p className="mb-2 text-[12px] text-ink-soft">새 끼니를 적을 때 이 방식이 먼저 보여요. 끼니마다 바꿀 수도 있어요.</p>
         <StylePicker
@@ -128,33 +217,43 @@ export default function SettingsPage() {
         </form>
       </Section>
 
-      {repo.kind === 'supabase' ? (
-        <Section title="배우자 초대">
-          <p className="text-[12px] text-ink-soft">배우자가 가입한 뒤 '초대 코드로 참여'에 이 코드를 넣으면 함께 볼 수 있어요.</p>
-          <p className="date-serif mt-2 text-center text-[34px] tracking-[0.3em] select-all">{ctx.household.inviteCode}</p>
-        </Section>
-      ) : null}
+      {message}
+    </>
+  )
+}
 
-      {repo.kind === 'supabase' ? <JoinOtherDiary /> : null}
+function ShareSettings() {
+  const ctx = useCtx()
+  if (repo.kind !== 'supabase') {
+    return (
+      <Section title="공유 연결">
+        <p className="text-[13px] leading-relaxed text-ink-soft">
+          지금은 로컬 모드라 이 기기에만 저장돼요. 배우자와 실시간으로 공유하려면 Supabase 프로젝트를 만들고
+          <code className="mx-1 rounded bg-rose-soft px-1">.env</code>에 주소와 키를 넣어 다시 배포하세요. (README 참고)
+        </p>
+      </Section>
+    )
+  }
+  return (
+    <>
+      <Section title="배우자 초대">
+        <p className="text-[12px] text-ink-soft">배우자가 가입한 뒤 '초대 코드로 참여'에 이 코드를 넣으면 함께 볼 수 있어요.</p>
+        <p className="date-serif mt-2 text-center text-[34px] tracking-[0.3em] select-all">{ctx.household.inviteCode}</p>
+      </Section>
+      <JoinOtherDiary />
+    </>
+  )
+}
 
-      {repo.kind === 'supabase' ? (
-        <Section title="내 계정">
-          <ChangePassword />
-          <button className="btn btn-ghost mt-3 w-full text-[13px]" onClick={() => repo.signOut()}>
-            로그아웃
-          </button>
-        </Section>
-      ) : (
-        <Section title="공유 연결">
-          <p className="text-[13px] leading-relaxed text-ink-soft">
-            지금은 로컬 모드라 이 기기에만 저장돼요. 배우자와 실시간으로 공유하려면 Supabase 프로젝트를 만들고
-            <code className="mx-1 rounded bg-rose-soft px-1">.env</code>에 주소와 키를 넣어 다시 배포하세요. (README 참고)
-          </p>
-        </Section>
-      )}
-
-      {msg && <p className="mt-4 text-center text-[13px] text-ink-soft">{msg}</p>}
-    </div>
+function AccountSettings() {
+  const user = useUser()
+  return (
+    <Section title={user?.email ?? '내 계정'}>
+      <ChangePassword />
+      <button className="btn btn-ghost mt-3 w-full text-[13px]" onClick={() => repo.signOut()}>
+        로그아웃
+      </button>
+    </Section>
   )
 }
 

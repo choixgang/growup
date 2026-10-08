@@ -43,7 +43,11 @@ function SettingsMenu() {
   const h = ctx.household
   const birth = ctx.baby.birthDate.replace(/-/g, '.')
   const items: { key: MenuKey; icon: React.ReactNode; desc: string }[] = [
-    { key: 'baby', icon: <Baby size={20} strokeWidth={1.5} />, desc: `${ctx.baby.name} · ${birth}` },
+    {
+      key: 'baby',
+      icon: <Baby size={20} strokeWidth={1.5} />,
+      desc: ctx.babies.length > 1 ? ctx.babies.map((b) => b.name).join(' · ') : `${ctx.baby.name} · ${birth}`,
+    },
     {
       key: 'feeding',
       icon: <CookingPot size={20} strokeWidth={1.5} />,
@@ -105,30 +109,112 @@ function useRun() {
 function BabySettings() {
   const ctx = useCtx()
   const { run, message } = useRun()
-  const [name, setName] = useState(ctx.baby.name)
-  const [birth, setBirth] = useState(ctx.baby.birthDate)
+  const [adding, setAdding] = useState(false)
+  const [name, setName] = useState('')
+  const [birth, setBirth] = useState(ctx.baby.birthDate) // 쌍둥이면 생일이 같으니 기본값으로
+
   return (
     <>
-      <Section title="아기">
-        <label className="flex flex-col gap-0.5">
-          <span className="text-[12px] text-ink-soft">이름</span>
-          <input className="field pen text-[22px]" value={name} onChange={(e) => setName(e.target.value)} />
-        </label>
-        <label className="mt-3 flex flex-col gap-0.5">
-          <span className="text-[12px] text-ink-soft">태어난 날</span>
-          <input className="field pen text-[22px]" type="date" value={birth} onChange={(e) => setBirth(e.target.value)} />
-        </label>
-        {(name !== ctx.baby.name || birth !== ctx.baby.birthDate) && (
-          <button
-            className="btn btn-primary mt-3 w-full"
-            onClick={() => run(() => repo.updateBaby(ctx.baby.id, { name: name.trim(), birthDate: birth }), '저장했어요')}
+      {ctx.babies.map((b) => (
+        <BabyCard key={b.id} babyId={b.id} canDelete={ctx.babies.length > 1} run={run} />
+      ))}
+
+      {adding ? (
+        <Section title="아이 추가">
+          <form
+            className="flex flex-col gap-3"
+            onSubmit={(e) => {
+              e.preventDefault()
+              if (!name.trim() || !birth) return
+              run(async () => {
+                await repo.addBaby(ctx.household.id, name.trim(), birth)
+                setAdding(false)
+                setName('')
+              }, '추가했어요. Monthly·Weekly 위에서 아이를 바꿔 볼 수 있어요')
+            }}
           >
-            저장
-          </button>
-        )}
-      </Section>
+            <label className="flex flex-col gap-0.5">
+              <span className="text-[12px] text-ink-soft">이름 (태명도 좋아요)</span>
+              <input className="field pen text-[22px]" required value={name} onChange={(e) => setName(e.target.value)} />
+            </label>
+            <label className="flex flex-col gap-0.5">
+              <span className="text-[12px] text-ink-soft">태어난 날</span>
+              <input
+                className="field pen text-[22px]"
+                type="date"
+                required
+                value={birth}
+                onChange={(e) => setBirth(e.target.value)}
+              />
+            </label>
+            <div className="flex gap-2">
+              <button type="button" className="btn btn-ghost flex-1" onClick={() => setAdding(false)}>
+                취소
+              </button>
+              <button className="btn btn-primary flex-1">추가</button>
+            </div>
+          </form>
+        </Section>
+      ) : (
+        <button
+          className="paper-texture mt-4 flex w-full items-center justify-center gap-1.5 rounded-[20px] border border-dashed border-line-strong py-3.5 text-[14px] text-ink-soft"
+          onClick={() => setAdding(true)}
+        >
+          <Plus size={16} /> 쌍둥이·형제 추가
+        </button>
+      )}
+      <p className="mt-2 px-1 text-[12px] leading-relaxed text-ink-faint">
+        아이마다 식단과 기록을 따로 적어요. 이유식 설정(방식, 테스트 간격, 먹어본 재료)은 함께 써요.
+      </p>
       {message}
     </>
+  )
+}
+
+function BabyCard({
+  babyId,
+  canDelete,
+  run,
+}: {
+  babyId: string
+  canDelete: boolean
+  run: (fn: () => Promise<void>, done?: string) => Promise<void>
+}) {
+  const ctx = useCtx()
+  const baby = ctx.babies.find((b) => b.id === babyId)!
+  const [name, setName] = useState(baby.name)
+  const [birth, setBirth] = useState(baby.birthDate)
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  return (
+    <Section title={baby.name}>
+      <label className="flex flex-col gap-0.5">
+        <span className="text-[12px] text-ink-soft">이름</span>
+        <input className="field pen text-[22px]" value={name} onChange={(e) => setName(e.target.value)} />
+      </label>
+      <label className="mt-3 flex flex-col gap-0.5">
+        <span className="text-[12px] text-ink-soft">태어난 날</span>
+        <input className="field pen text-[22px]" type="date" value={birth} onChange={(e) => setBirth(e.target.value)} />
+      </label>
+      {(name !== baby.name || birth !== baby.birthDate) && (
+        <button
+          className="btn btn-primary mt-3 w-full"
+          onClick={() => run(() => repo.updateBaby(baby.id, { name: name.trim(), birthDate: birth }), '저장했어요')}
+        >
+          저장
+        </button>
+      )}
+      {canDelete && (
+        <button
+          className={`btn mt-3 w-full text-[13px] ${confirmDelete ? 'bg-alert/15 text-alert' : 'btn-ghost text-ink-soft'}`}
+          onClick={() => {
+            if (!confirmDelete) return setConfirmDelete(true)
+            run(() => repo.deleteBaby(baby.id), `${baby.name}을(를) 삭제했어요`)
+          }}
+        >
+          {confirmDelete ? `${baby.name}의 식단·기록이 모두 지워져요. 한 번 더 누르면 삭제` : '이 아이 삭제'}
+        </button>
+      )}
+    </Section>
   )
 }
 

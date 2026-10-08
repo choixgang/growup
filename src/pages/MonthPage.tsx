@@ -4,6 +4,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useCtx } from '../App'
 import MonthGrid from '../components/MonthGrid'
 import MonthInfo from '../components/MonthInfo'
+import BabySwitcher from '../components/BabySwitcher'
 import { useAnalysis, useMeals, useMonthNote, useSaveMonthNote } from '../data/hooks'
 import { todayStr, weekStartOf, ym } from '../lib/dates'
 import { dPlus } from '../lib/rules'
@@ -27,9 +28,10 @@ export default function MonthPage() {
     <div className="px-3 pt-[max(14px,env(safe-area-inset-top))]">
       <header className="flex items-end justify-between px-1">
         <div>
-          <p className="text-[12px] text-ink-soft">
-            {ctx.baby.name} · 오늘 D+{dPlus(ctx.baby.birthDate, todayStr())}
-          </p>
+          <div className="flex items-center gap-2 text-[12px] text-ink-soft">
+            {ctx.babies.length > 1 ? <BabySwitcher /> : <span>{ctx.baby.name} ·</span>}
+            <span>오늘 D+{dPlus(ctx.baby.birthDate, todayStr())}</span>
+          </div>
           <h1 className="title-serif text-[42px] leading-[0.95] italic">Monthly</h1>
         </div>
         <Link to={`/export/${month}`} className="btn btn-soft mb-1 px-3.5 py-2 text-[13px]">

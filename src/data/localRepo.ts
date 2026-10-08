@@ -1,12 +1,14 @@
 import type { Baby, Household, Meal, MonthNote, WeekNote } from '../lib/types'
-import type { AppContext, Repo, SessionUser } from './repo'
+import type { Repo, SessionUser, StoredContext } from './repo'
 
 const KEY = 'growup-local-v1'
 const LOCAL_USER: SessionUser = { id: 'local', email: null }
 
 interface LocalDb {
   household: Household | null
-  baby: Baby | null
+  /** 예전 저장 형식 (아기 한 명). 읽을 때 babies 로 옮긴다 */
+  baby?: Baby | null
+  babies?: Baby[]
   meals: Meal[]
   monthNotes: MonthNote[]
   weekNotes: WeekNote[]
@@ -15,11 +17,16 @@ interface LocalDb {
 function load(): LocalDb {
   try {
     const raw = localStorage.getItem(KEY)
-    if (raw) return JSON.parse(raw) as LocalDb
+    if (raw) {
+      const db = JSON.parse(raw) as LocalDb
+      if (!db.babies) db.babies = db.baby ? [db.baby] : []
+      delete db.baby
+      return db
+    }
   } catch {
     // 저장소를 못 읽으면 빈 상태로 시작
   }
-  return { household: null, baby: null, meals: [], monthNotes: [], weekNotes: [] }
+  return { household: null, babies: [], meals: [], monthNotes: [], weekNotes: [] }
 }
 
 function save(db: LocalDb) {
@@ -62,16 +69,16 @@ export function createLocalRepo(): Repo {
       throw new Error('로컬 모드에는 비밀번호가 없어요.')
     },
 
-    async getContext(): Promise<AppContext | null> {
+    async getContext(): Promise<StoredContext | null> {
       const db = load()
-      if (!db.household || !db.baby) return null
+      if (!db.household || !db.babies?.length) return null
       return {
         household: {
           ...db.household,
           knownIngredients: db.household.knownIngredients ?? [],
           feedingStyle: db.household.feedingStyle ?? 'topping',
         },
-        baby: db.baby,
+        babies: db.babies,
       }
     },
     async createHousehold(babyName, birthDate, feedingStyle) {
@@ -84,7 +91,7 @@ export function createLocalRepo(): Repo {
         feedingStyle,
       }
       db.household = household
-      db.baby = { id: uid(), householdId: household.id, name: babyName, birthDate }
+      db.babies = [{ id: uid(), householdId: household.id, name: babyName, birthDate }]
       save(db)
     },
     async joinHousehold() {
@@ -103,9 +110,22 @@ export function createLocalRepo(): Repo {
     async getMemberCount() {
       return 1
     },
-    async updateBaby(_id, patch) {
+    async updateBaby(id, patch) {
       const db = load()
-      if (db.baby) db.baby = { ...db.baby, ...patch }
+      db.babies = (db.babies ?? []).map((b) => (b.id === id ? { ...b, ...patch } : b))
+      save(db)
+    },
+    async addBaby(householdId, name, birthDate) {
+      const db = load()
+      db.babies = [...(db.babies ?? []), { id: uid(), householdId, name, birthDate }]
+      save(db)
+    },
+    async deleteBaby(id) {
+      const db = load()
+      db.babies = (db.babies ?? []).filter((b) => b.id !== id)
+      db.meals = db.meals.filter((m) => m.babyId !== id)
+      db.monthNotes = db.monthNotes.filter((n) => n.babyId !== id)
+      db.weekNotes = db.weekNotes.filter((n) => n.babyId !== id)
       save(db)
     },
     async updateHousehold(_id, patch) {

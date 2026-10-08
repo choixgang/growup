@@ -1,6 +1,6 @@
 import { createClient, type SupabaseClient, type User } from '@supabase/supabase-js'
 import type { FeedingStyle, Meal, MealItem, MealLog, MonthNote, Stage, WeekNote, ChecklistItem } from '../lib/types'
-import type { AppContext, Repo, SessionUser } from './repo'
+import type { Repo, SessionUser, StoredContext } from './repo'
 
 interface MealRow {
   id: string
@@ -110,7 +110,7 @@ export function createSupabaseRepo(url: string, anonKey: string): Repo {
     },
     finishRecovery: () => setRecovering(false),
 
-    async getContext(): Promise<AppContext | null> {
+    async getContext(): Promise<StoredContext | null> {
       const { data: session } = await sb.auth.getSession()
       const userId = session.session?.user.id
       if (!userId) return null
@@ -127,10 +127,9 @@ export function createSupabaseRepo(url: string, anonKey: string): Repo {
         feeding_style?: FeedingStyle
       }
       const babies = check(
-        await sb.from('babies').select('*').eq('household_id', hid).order('created_at').limit(1),
+        await sb.from('babies').select('*').eq('household_id', hid).order('created_at'),
       ) as { id: string; household_id: string; name: string; birth_date: string }[]
       if (!babies.length) return null
-      const b = babies[0]
       return {
         household: {
           id: h.id,
@@ -139,7 +138,7 @@ export function createSupabaseRepo(url: string, anonKey: string): Repo {
           knownIngredients: h.known_ingredients ?? [],
           feedingStyle: h.feeding_style ?? 'topping',
         },
-        baby: { id: b.id, householdId: b.household_id, name: b.name, birthDate: b.birth_date },
+        babies: babies.map((b) => ({ id: b.id, householdId: b.household_id, name: b.name, birthDate: b.birth_date })),
       }
     },
     async createHousehold(babyName, birthDate, feedingStyle) {
@@ -156,6 +155,12 @@ export function createSupabaseRepo(url: string, anonKey: string): Repo {
     },
     async updateBaby(babyId, patch) {
       check(await sb.from('babies').update({ name: patch.name, birth_date: patch.birthDate }).eq('id', babyId))
+    },
+    async addBaby(householdId, name, birthDate) {
+      check(await sb.from('babies').insert({ household_id: householdId, name, birth_date: birthDate }))
+    },
+    async deleteBaby(babyId) {
+      check(await sb.from('babies').delete().eq('id', babyId))
     },
     async updateHousehold(householdId, patch) {
       const row: Record<string, unknown> = {}
@@ -241,8 +246,11 @@ export function createSupabaseRepo(url: string, anonKey: string): Repo {
       }
       // DELETE 이벤트는 필터를 지원하지 않아서 따로 받는다 (RLS상 볼 수 없는 행은 id만 오고 refetch로 걸러짐)
       channel.on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'meals' }, () => cb('meals'))
-      channel.on('postgres_changes', { event: '*', schema: 'public', table: 'babies', filter: `id=eq.${babyId}` }, () =>
-        cb('context'),
+      // 배우자가 아기를 추가·수정해도 바로 보이게 다이어리 단위로 받는다
+      channel.on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'babies', filter: `household_id=eq.${householdId}` },
+        () => cb('context'),
       )
       channel.on(
         'postgres_changes',

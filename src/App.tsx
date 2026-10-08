@@ -1,7 +1,7 @@
-import { createContext, useContext } from 'react'
+import { createContext, useContext, useMemo, useState } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { useAppContext, useRealtime, useRecovering, useUser } from './data/hooks'
-import type { AppContext } from './data/repo'
+import type { AppContext, StoredContext } from './data/repo'
 import { repo } from './data'
 import AuthPage, { ResetPasswordPage } from './pages/AuthPage'
 import OnboardingPage from './pages/OnboardingPage'
@@ -29,9 +29,40 @@ export default function App() {
   if (!user) return <AuthPage />
   if (context.isError) return <Splash message={(context.error as Error).message} />
   if (!context.data) return <OnboardingPage />
+  return <WithBaby stored={context.data} />
+}
+
+const BABY_KEY = 'growup-baby'
+
+function readBabyId(): string | null {
+  try {
+    return localStorage.getItem(BABY_KEY)
+  } catch {
+    return null
+  }
+}
+
+/** 지금 보고 있는 아기를 고른다. 기기마다 마지막으로 본 아기를 기억한다 */
+function WithBaby({ stored }: { stored: StoredContext }) {
+  const [babyId, setBabyId] = useState(readBabyId)
+  const ctx = useMemo<AppContext>(() => {
+    const baby = stored.babies.find((b) => b.id === babyId) ?? stored.babies[0]
+    return {
+      ...stored,
+      baby,
+      selectBaby: (id) => {
+        setBabyId(id)
+        try {
+          localStorage.setItem(BABY_KEY, id)
+        } catch {
+          // 저장을 못 해도 이번 실행 동안은 바뀐 아기로 본다
+        }
+      },
+    }
+  }, [stored, babyId])
   return (
-    <Ctx.Provider value={context.data}>
-      <Shell ctx={context.data} />
+    <Ctx.Provider value={ctx}>
+      <Shell ctx={ctx} />
     </Ctx.Provider>
   )
 }

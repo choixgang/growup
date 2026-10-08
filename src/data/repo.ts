@@ -1,8 +1,15 @@
 import type { Baby, FeedingStyle, Household, Meal, MonthNote, WeekNote } from '../lib/types'
 
-export interface AppContext {
+/** 저장소가 돌려주는 다이어리 정보. 아기는 등록 순서대로 */
+export interface StoredContext {
   household: Household
+  babies: Baby[]
+}
+
+/** 앱 화면이 쓰는 정보. baby 는 지금 보고 있는 아기 */
+export interface AppContext extends StoredContext {
   baby: Baby
+  selectBaby: (babyId: string) => void
 }
 
 export interface SessionUser {
@@ -32,12 +39,16 @@ export interface Repo {
   finishRecovery(): void
 
   // 가정·아기
-  getContext(): Promise<AppContext | null>
+  getContext(): Promise<StoredContext | null>
   createHousehold(babyName: string, birthDate: string, feedingStyle: FeedingStyle): Promise<void>
   /** 초대 코드로 참여. 이미 다른 다이어리에 있으면 그곳에서 나와 옮겨간다 */
   joinHousehold(inviteCode: string): Promise<void>
   getMemberCount(householdId: string): Promise<number>
   updateBaby(babyId: string, patch: Pick<Baby, 'name' | 'birthDate'>): Promise<void>
+  /** 쌍둥이·형제 추가. 아기마다 기록은 따로 */
+  addBaby(householdId: string, name: string, birthDate: string): Promise<void>
+  /** 아기와 그 아기의 기록을 모두 지운다 */
+  deleteBaby(babyId: string): Promise<void>
   updateHousehold(householdId: string, patch: Partial<Pick<Household, 'testIntervalDays' | 'knownIngredients' | 'feedingStyle'>>): Promise<void>
 
   // 식단

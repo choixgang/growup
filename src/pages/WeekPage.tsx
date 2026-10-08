@@ -5,6 +5,7 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useCtx } from '../App'
 import CopyMealSheet from '../components/CopyMealSheet'
 import MealSheet from '../components/MealSheet'
+import BabySwitcher from '../components/BabySwitcher'
 import {
   useAnalysis,
   useDeleteMeal,
@@ -85,6 +86,11 @@ export default function WeekPage() {
 
   return (
     <div className="px-3 pt-[max(14px,env(safe-area-inset-top))]">
+      {ctx.babies.length > 1 && (
+        <div className="px-1 pb-1">
+          <BabySwitcher />
+        </div>
+      )}
       <header className="flex items-end justify-between px-1">
         <h1 className="title-serif text-[42px] leading-[0.95] italic">Weekly</h1>
         <div className="mb-1 flex items-center gap-1 text-ink-soft">

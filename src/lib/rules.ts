@@ -1,5 +1,5 @@
 import { addDays, differenceInCalendarDays, format, parseISO } from 'date-fns'
-import type { Meal } from './types'
+import type { ItemReaction, Meal } from './types'
 
 /** 재료 이름 비교용 정규화: 공백 제거 + 소문자 */
 export function normalizeName(name: string): string {
@@ -73,10 +73,16 @@ export function analyzeIngredients(
     }
   }
 
-  // 이상 반응은 그날 테스트 중이던 새 재료 탓으로 본다. 테스트 중인 재료가 없으면
+  // 재료별로 이상 반응을 고른 기록은 그 재료만 주의 재료로 둔다.
+  // 예전 기록(끼니 전체 반응)은 그날 테스트 중이던 새 재료 탓으로 보고, 테스트 중인 재료가 없으면
   // 이미 먹어본 재료를 뺀 나머지 재료 전부를 주의 재료로 둔다.
   for (const meal of sorted) {
-    if (meal.log?.reaction !== 'issue') continue
+    const picked = issueKeys(meal)
+    if (picked.length) {
+      for (const k of picked) cautionKeys.add(k)
+      continue
+    }
+    if (meal.log?.reaction !== 'issue' || hasItemReactions(meal)) continue
     const keys = meal.items.map((i) => normalizeName(i.name)).filter((k) => k && !known.has(k))
     const testing = keys.filter((k) => {
       const t = byKey.get(k)
@@ -142,6 +148,29 @@ export function checkDraft(
     }
   }
   return [...new Set(messages)]
+}
+
+function hasItemReactions(meal: Meal): boolean {
+  return Object.keys(meal.log?.itemReactions ?? {}).length > 0
+}
+
+function issueKeys(meal: Meal): string[] {
+  const r = meal.log?.itemReactions ?? {}
+  return Object.keys(r).filter((k) => r[k] === 'issue')
+}
+
+/** 이 끼니에서 재료(정규화 key)에 남긴 반응. 반응을 안 고른 재료는 없음 */
+export function itemReaction(meal: Meal, key: string): ItemReaction | null {
+  return meal.log?.itemReactions?.[key] ?? null
+}
+
+const SEVERITY: Record<ItemReaction, number> = { issue: 3, dislike: 2, like: 1, normal: 0 }
+
+/** 같은 재료에 반응이 여러 번 있으면 더 눈여겨볼 쪽(이상 반응 > 싫어함 > 좋아함 > 보통)을 남긴다 */
+export function strongerReaction(a: ItemReaction | null, b: ItemReaction | null): ItemReaction | null {
+  if (!a) return b
+  if (!b) return a
+  return SEVERITY[b] > SEVERITY[a] ? b : a
 }
 
 function shortDate(d: string): string {

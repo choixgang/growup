@@ -13,6 +13,7 @@
   --color-ink-soft: #8a776b;
   --color-ink-faint: #b4a397;
   --color-warn: #c0735f;
+  --color-alert: #c8413b; /* 이상 반응 재료 (새 재료 로즈와 구분) */
   --color-sage: #8fa27f;
 
   --font-serif: 'Cormorant Garamond', 'Gowun Batang', serif;

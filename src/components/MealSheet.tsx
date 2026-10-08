@@ -3,10 +3,10 @@ import { format, parseISO } from 'date-fns'
 import { ko } from 'date-fns/locale'
 import { AlertTriangle, Camera, Plus, Trash2, X } from 'lucide-react'
 import { repo } from '../data'
-import { checkDraft } from '../lib/rules'
+import { checkDraft, normalizeName } from '../lib/rules'
 import { preparePhoto } from '../lib/image'
 import { circled } from '../lib/dates'
-import { emptyLog, type FeedingStyle, type Meal, type MealItem, type MealLog, type Preference } from '../lib/types'
+import { emptyLog, ITEM_REACTIONS, type FeedingStyle, type ItemReaction, type Meal, type MealItem, type MealLog } from '../lib/types'
 
 interface Props {
   babyId: string
@@ -22,12 +22,6 @@ interface Props {
   onDelete: (id: string) => void
   onClose: () => void
 }
-
-const PREFS: { value: Preference; label: string }[] = [
-  { value: 'like', label: '좋아함' },
-  { value: 'normal', label: '보통' },
-  { value: 'refuse', label: '거부' },
-]
 
 export default function MealSheet(props: Props) {
   const { meal, date, slot } = props
@@ -55,6 +49,23 @@ export default function MealSheet(props: Props) {
     [props.allMeals, meal?.id, date, slot, JSON.stringify(cleanItems), props.intervalDays, props.knownIngredients],
   )
 
+  // 예전 기록(끼니 전체 반응)은 재료별 반응을 하나도 안 골랐을 때만 그 값을 유지한다
+  const hasIssue = log
+    ? Object.keys(log.itemReactions ?? {}).length
+      ? Object.values(log.itemReactions ?? {}).includes('issue')
+      : log.reaction === 'issue'
+    : false
+
+  function setItemReaction(key: string, value: ItemReaction | null) {
+    setLog((l) => {
+      if (!l) return l
+      const next = { ...(l.itemReactions ?? {}) }
+      if (value) next[key] = value
+      else delete next[key]
+      return { ...l, itemReactions: next }
+    })
+  }
+
   function updateItem(i: number, patch: Partial<MealItem>) {
     setItems((prev) => prev.map((it, idx) => (idx === i ? { ...it, ...patch } : it)))
   }
@@ -77,6 +88,18 @@ export default function MealSheet(props: Props) {
     }
   }
 
+  function finishLog(l: MealLog): MealLog {
+    const keys = new Set(cleanItems.map((i) => normalizeName(i.name)))
+    const reactions = Object.fromEntries(Object.entries(l.itemReactions ?? {}).filter(([k]) => keys.has(k)))
+    const picked = Object.keys(reactions).length > 0
+    return {
+      ...l,
+      itemReactions: reactions,
+      reaction: picked ? (Object.values(reactions).includes('issue') ? 'issue' : 'none') : l.reaction,
+      loggedAt: meal?.log?.loggedAt ?? new Date().toISOString(),
+    }
+  }
+
   async function save() {
     if (!cleanItems.length) {
       setError('재료를 하나 이상 적어주세요')
@@ -94,7 +117,7 @@ export default function MealSheet(props: Props) {
         title: porridge ? title.trim() : '',
         totalMl: porridge ? totalMl : null,
         items: cleanItems.map((i) => ({ name: i.name.trim(), grams: porridge ? null : i.grams })),
-        log: log ? { ...log, loggedAt: meal?.log?.loggedAt ?? new Date().toISOString() } : null,
+        log: log ? finishLog(log) : null,
       })
       props.onClose()
     } catch (e) {
@@ -242,49 +265,56 @@ export default function MealSheet(props: Props) {
             </label>
 
             <div>
-              <span className="text-[12px] text-ink-soft">반응</span>
-              <div className="mt-1 flex gap-2">
-                {(['none', 'issue'] as const).map((r) => (
-                  <button
-                    key={r}
-                    className={`flex-1 rounded-xl border py-2 text-[14px] ${
-                      log.reaction === r
-                        ? r === 'issue'
-                          ? 'border-warn bg-warn/10 text-warn'
-                          : 'border-ink bg-card'
-                        : 'border-line text-ink-soft'
-                    }`}
-                    onClick={() => setLog({ ...log, reaction: r })}
-                  >
-                    {r === 'none' ? '이상 없음' : '이상 반응 있음'}
-                  </button>
-                ))}
-              </div>
-              {log.reaction === 'issue' && (
+              <span className="text-[12px] text-ink-soft">재료별 반응</span>
+              {cleanItems.length ? (
+                <div className="mt-1 flex flex-col">
+                  {cleanItems.map((it) => {
+                    const key = normalizeName(it.name)
+                    const picked = log.itemReactions?.[key] ?? null
+                    return (
+                      <div key={key} className="flex items-center gap-2 border-b border-dashed border-line py-1">
+                        <span
+                          className={`pen min-w-0 flex-1 truncate text-[21px] ${picked === 'issue' ? 'text-alert' : ''}`}
+                        >
+                          {it.name.trim()}
+                        </span>
+                        {ITEM_REACTIONS.map((r) => (
+                          <button
+                            key={r.value}
+                            aria-label={`${it.name.trim()} ${r.label}`}
+                            aria-pressed={picked === r.value}
+                            className={`flex h-9 w-9 items-center justify-center rounded-full text-[17px] transition ${
+                              picked === r.value
+                                ? r.value === 'issue'
+                                  ? 'bg-alert/15 ring-1 ring-alert'
+                                  : 'bg-rose-soft ring-1 ring-ink-soft'
+                                : picked
+                                  ? 'opacity-30 grayscale'
+                                  : 'opacity-70'
+                            }`}
+                            onClick={() => setItemReaction(key, picked === r.value ? null : r.value)}
+                          >
+                            {r.emoji}
+                          </button>
+                        ))}
+                      </div>
+                    )
+                  })}
+                  <p className="mt-1 text-[11px] text-ink-faint">
+                    {ITEM_REACTIONS.map((r) => `${r.emoji} ${r.label}`).join('  ·  ')}
+                  </p>
+                </div>
+              ) : (
+                <p className="mt-1 text-[12px] text-ink-faint">위에 재료를 적으면 재료마다 반응을 고를 수 있어요</p>
+              )}
+              {(hasIssue || log.reactionNote) && (
                 <input
                   className="field pen mt-2 text-[20px]"
-                  placeholder="예: 입 주변 발진, 2시간 뒤 가라앉음"
+                  placeholder="이상 반응 메모 (예: 입 주변 발진, 2시간 뒤 가라앉음)"
                   value={log.reactionNote}
                   onChange={(e) => setLog({ ...log, reactionNote: e.target.value })}
                 />
               )}
-            </div>
-
-            <div>
-              <span className="text-[12px] text-ink-soft">잘 먹었나요</span>
-              <div className="mt-1 flex gap-2">
-                {PREFS.map((p) => (
-                  <button
-                    key={p.value}
-                    className={`flex-1 rounded-xl border py-2 text-[14px] ${
-                      log.preference === p.value ? 'border-ink bg-card' : 'border-line text-ink-soft'
-                    }`}
-                    onClick={() => setLog({ ...log, preference: log.preference === p.value ? null : p.value })}
-                  >
-                    {p.label}
-                  </button>
-                ))}
-              </div>
             </div>
 
             <div>

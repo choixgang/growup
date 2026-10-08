@@ -53,6 +53,21 @@ describe('analyzeIngredients', () => {
     )
     expect([...a.cautionKeys]).toEqual(['달걀'])
   })
+
+  it('재료별로 이상 반응을 고르면 그 재료만 주의 재료가 된다', () => {
+    const m = meal('2026-10-04', ['감자', '소고기', '양배추'])
+    m.log = {
+      eatenAmount: '',
+      reaction: 'issue',
+      reactionNote: '',
+      preference: null,
+      itemReactions: { 소고기: 'issue', 감자: 'like' },
+      photoUrl: null,
+      loggedAt: '',
+    }
+    const a = analyzeIngredients([m], 3)
+    expect([...a.cautionKeys]).toEqual(['소고기'])
+  })
 })
 
 describe('checkDraft', () => {

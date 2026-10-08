@@ -36,11 +36,32 @@ export interface MealItem {
 export type Reaction = 'none' | 'issue'
 export type Preference = 'like' | 'normal' | 'refuse'
 
+/** 재료별 반응. 한 재료에 하나만 고른다 */
+export type ItemReaction = 'like' | 'normal' | 'dislike' | 'issue'
+
+export const ITEM_REACTIONS: { value: ItemReaction; emoji: string; label: string }[] = [
+  { value: 'like', emoji: '❤️', label: '좋아함' },
+  { value: 'normal', emoji: '💚', label: '보통' },
+  { value: 'dislike', emoji: '💔', label: '싫어함' },
+  { value: 'issue', emoji: '⚠️', label: '이상 반응' },
+]
+
+export const REACTION_EMOJI: Record<ItemReaction, string> = {
+  like: '❤️',
+  normal: '💚',
+  dislike: '💔',
+  issue: '⚠️',
+}
+
 export interface MealLog {
   eatenAmount: string // 자유 입력 (예: "30ml", "절반")
+  /** 재료 하나라도 이상 반응이면 'issue'. 재료별 반응이 생기기 전 기록은 끼니 전체 값만 있다 */
   reaction: Reaction
   reactionNote: string
+  /** 예전 기록의 끼니 전체 선호도. 새 기록은 itemReactions 를 쓴다 */
   preference: Preference | null
+  /** 정규화한 재료 이름 → 반응 */
+  itemReactions?: Record<string, ItemReaction>
   photoUrl: string | null
   /** 목록용 작은 사진. 예전 기록에는 없을 수 있어 photoUrl로 대신한다 */
   photoThumbUrl?: string | null
@@ -90,6 +111,7 @@ export function emptyLog(): MealLog {
     reaction: 'none',
     reactionNote: '',
     preference: null,
+    itemReactions: {},
     photoUrl: null,
     photoThumbUrl: null,
     loggedAt: new Date().toISOString(),

@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { addDays, format, parseISO } from 'date-fns'
-import { AlertTriangle, ChevronLeft, ChevronRight, Plus, X } from 'lucide-react'
+import { AlertTriangle, ChevronLeft, ChevronRight, Copy, Plus, X } from 'lucide-react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useCtx } from '../App'
+import CopyMealSheet from '../components/CopyMealSheet'
 import MealSheet from '../components/MealSheet'
 import {
   useAnalysis,
@@ -13,8 +14,8 @@ import {
   useWeekNote,
 } from '../data/hooks'
 import { circled, DAY_LABELS_EN, todayStr, weekDates, weekStartOf, ymd } from '../lib/dates'
-import { dPlus, normalizeName, type IngredientAnalysis } from '../lib/rules'
-import type { Meal, WeekNote } from '../lib/types'
+import { dPlus, itemReaction, normalizeName, type IngredientAnalysis } from '../lib/rules'
+import { REACTION_EMOJI, type Meal, type WeekNote } from '../lib/types'
 
 const PREF_LABEL = { like: '♡ 좋아함', normal: '보통', refuse: '거부' } as const
 
@@ -32,6 +33,28 @@ export default function WeekPage() {
   const saveMeal = useSaveMeal(ctx.baby.id)
   const deleteMeal = useDeleteMeal(ctx.baby.id)
   const [editing, setEditing] = useState<{ date: string; slot: number; meal: Meal | null } | null>(null)
+  const [copying, setCopying] = useState<Meal | null>(null)
+  const [toast, setToast] = useState<string | null>(null)
+  useEffect(() => {
+    if (!toast) return
+    const t = setTimeout(() => setToast(null), 2500)
+    return () => clearTimeout(t)
+  }, [toast])
+
+  async function copyMeal(src: Meal, date: string) {
+    const slot = (meals.data ?? []).filter((m) => m.date === date).reduce((n, m) => Math.max(n, m.slot), 0) + 1
+    await saveMeal.mutateAsync({
+      babyId: src.babyId,
+      date,
+      slot,
+      style: src.style ?? 'topping',
+      title: src.title ?? '',
+      totalMl: src.totalMl ?? null,
+      items: src.items.map((i) => ({ ...i })),
+      log: null,
+    })
+    setToast(`${format(parseISO(date), 'M월 d일')}에 복사했어요`)
+  }
 
   const ingredientNames = useMemo(
     () => [...new Set([...ctx.household.knownIngredients, ...analysis.tests.map((t) => t.name)])],
@@ -100,6 +123,7 @@ export default function WeekPage() {
                     multi={dayMeals.length > 1}
                     analysis={analysis}
                     onClick={() => setEditing({ date, slot: m.slot, meal: m })}
+                    onCopy={() => setCopying(m)}
                   />
                 ))}
                 <button
@@ -115,6 +139,16 @@ export default function WeekPage() {
       </section>
 
       <WeekNotes babyId={ctx.baby.id} weekStart={weekStart} />
+
+      {copying && (
+        <CopyMealSheet meal={copying} onCopy={(d) => copyMeal(copying, d)} onClose={() => setCopying(null)} />
+      )}
+
+      {toast && (
+        <div className="pointer-events-none fixed inset-x-0 bottom-[96px] z-40 flex justify-center">
+          <p className="rounded-full bg-ink/85 px-4 py-2 text-[13px] text-paper shadow-lg">{toast}</p>
+        </div>
+      )}
 
       {editing && (
         <MealSheet
@@ -141,75 +175,169 @@ function MealRow({
   multi,
   analysis,
   onClick,
+  onCopy,
 }: {
   meal: Meal
   multi: boolean
   analysis: IngredientAnalysis
   onClick: () => void
+  onCopy: () => void
 }) {
+  const gesture = useCopyGesture(onCopy)
   const newKeys = new Set(analysis.newByDate.get(meal.date) ?? [])
   const log = meal.log
   const porridge = meal.style === 'porridge'
+  const hasItemReactions = Object.keys(log?.itemReactions ?? {}).length > 0
   return (
-    <button onClick={onClick} className="block w-full border-b border-dashed border-line py-1 text-left last:border-0">
-      {porridge && (
-        <div className="pen flex flex-wrap items-baseline gap-x-2 text-[21px] leading-[1.2]">
-          {multi && <span className="text-ink-soft">{circled(meal.slot)}</span>}
-          <span>{meal.title || '죽'}</span>
-          {meal.totalMl != null && <span className="text-ink-soft">{meal.totalMl}ml</span>}
-        </div>
-      )}
-      <div
-        className={`pen flex flex-wrap items-baseline ${
-          porridge ? 'gap-x-1.5 text-[17px] leading-[1.15] text-ink-soft' : 'gap-x-2.5 text-[21px] leading-[1.2]'
-        }`}
+    <div className="relative overflow-hidden border-b border-dashed border-line last:border-0">
+      <span
+        className="absolute inset-y-0 right-1 flex items-center gap-1 text-[12px] text-rose-deep"
+        style={{ opacity: Math.min(1, -gesture.dx / 60) }}
       >
-        {multi && !porridge && <span className="text-ink-soft">{circled(meal.slot)}</span>}
-        {meal.items.map((it, i) => {
-          const key = normalizeName(it.name)
-          return (
-            <span key={i} className="inline-flex items-baseline gap-0.5">
-              {analysis.cautionKeys.has(key) && <AlertTriangle size={12} className="self-center text-warn" />}
-              <span className={newKeys.has(key) ? 'text-rose-deep' : ''}>{it.name}</span>
-              {it.grams != null && <span className="text-ink-soft">{it.grams}g</span>}
-              {newKeys.has(key) && (
-                <span className="title-serif ml-0.5 rounded-sm bg-rose-soft px-1 text-[10px] tracking-wider not-italic">
-                  NEW
-                </span>
-              )}
-            </span>
-          )
-        })}
-      </div>
-      {log ? (
-        <div className="mt-0.5 flex items-center gap-2 text-[12px] text-ink-soft">
-          {log.photoUrl && (
-            <img
-              src={log.photoThumbUrl ?? log.photoUrl}
-              alt=""
-              loading="lazy"
-              decoding="async"
-              className="h-7 w-7 rounded object-cover"
-            />
-          )}
-          <span className="pen text-[17px]">
-            {[
-              log.eatenAmount && `먹은 양 ${log.eatenAmount}`,
-              log.preference && PREF_LABEL[log.preference],
-              log.reaction === 'issue' ? null : '반응 없음',
-            ]
-              .filter(Boolean)
-              .join(' · ')}
-          </span>
-          {log.reaction === 'issue' && (
-            <span className="pen text-[17px] text-warn">⚠ {log.reactionNote || '이상 반응'}</span>
-          )}
+        <Copy size={14} /> 복사
+      </span>
+      <button
+        {...gesture.handlers}
+        onClick={() => !gesture.consumeClick() && onClick()}
+        className={`block w-full py-1 text-left select-none [-webkit-touch-callout:none] ${gesture.dx ? 'bg-paper' : ''} ${
+          gesture.dragging ? '' : 'transition-transform'
+        }`}
+        style={{ transform: `translateX(${gesture.dx}px)`, touchAction: 'pan-y' }}
+      >
+        {porridge && (
+          <div className="pen flex flex-wrap items-baseline gap-x-2 text-[21px] leading-[1.2]">
+            {multi && <span className="text-ink-soft">{circled(meal.slot)}</span>}
+            <span>{meal.title || '죽'}</span>
+            {meal.totalMl != null && <span className="text-ink-soft">{meal.totalMl}ml</span>}
+          </div>
+        )}
+        <div
+          className={`pen flex flex-wrap items-baseline ${
+            porridge ? 'gap-x-1.5 text-[17px] leading-[1.15] text-ink-soft' : 'gap-x-2.5 text-[21px] leading-[1.2]'
+          }`}
+        >
+          {multi && !porridge && <span className="text-ink-soft">{circled(meal.slot)}</span>}
+          {meal.items.map((it, i) => {
+            const key = normalizeName(it.name)
+            const caution = analysis.cautionKeys.has(key)
+            const r = itemReaction(meal, key)
+            return (
+              <span key={i} className="inline-flex items-baseline gap-0.5">
+                {caution && r !== 'issue' && <AlertTriangle size={12} className="self-center text-alert" />}
+                <span className={caution ? 'text-alert' : newKeys.has(key) ? 'text-rose-deep' : ''}>{it.name}</span>
+                {it.grams != null && <span className="text-ink-soft">{it.grams}g</span>}
+                {r && <span className="self-center text-[11px] not-italic">{REACTION_EMOJI[r]}</span>}
+                {newKeys.has(key) && (
+                  <span className="title-serif ml-0.5 rounded-sm bg-rose-soft px-1 text-[10px] tracking-wider not-italic">
+                    NEW
+                  </span>
+                )}
+              </span>
+            )
+          })}
         </div>
-      ) : (
-        <p className="text-[11px] text-ink-faint">계획 · 먹인 뒤 눌러서 기록</p>
-      )}
-    </button>
+        {log ? (
+          <div className="mt-0.5 flex items-center gap-2 text-[12px] text-ink-soft">
+            {log.photoUrl && (
+              <img
+                src={log.photoThumbUrl ?? log.photoUrl}
+                alt=""
+                loading="lazy"
+                decoding="async"
+                className="h-7 w-7 rounded object-cover"
+              />
+            )}
+            <span className="pen text-[17px]">
+              {[
+                log.eatenAmount && `먹은 양 ${log.eatenAmount}`,
+                !hasItemReactions && log.preference && PREF_LABEL[log.preference],
+                log.reaction === 'issue' || hasItemReactions ? null : '반응 없음',
+              ]
+                .filter(Boolean)
+                .join(' · ')}
+            </span>
+            {log.reaction === 'issue' && (log.reactionNote || !hasItemReactions) && (
+              <span className="pen text-[17px] text-alert">⚠ {log.reactionNote || '이상 반응'}</span>
+            )}
+          </div>
+        ) : (
+          <p className="text-[11px] text-ink-faint">계획 · 먹인 뒤 눌러서 기록</p>
+        )}
+      </button>
+    </div>
   )
+}
+
+/**
+ * 끼니 줄을 왼쪽으로 밀거나 꾹 누르면 복사 창을 연다.
+ * 세로로 움직이면 스크롤로 보고 아무것도 하지 않는다.
+ */
+function useCopyGesture(onTrigger: () => void) {
+  const [dx, setDx] = useState(0)
+  const [dragging, setDragging] = useState(false)
+  const g = useRef<{ x: number; y: number; timer: number | null; mode: 'idle' | 'swipe' | 'scroll' } | null>(null)
+  const fired = useRef(false)
+
+  const clearTimer = () => {
+    if (g.current?.timer) clearTimeout(g.current.timer)
+    if (g.current) g.current.timer = null
+  }
+  const fire = () => {
+    fired.current = true
+    navigator.vibrate?.(12)
+    onTrigger()
+  }
+
+  return {
+    dx,
+    dragging,
+    /** 제스처 뒤에 따라오는 click 은 끼니 편집으로 넘기지 않는다 */
+    consumeClick: () => {
+      const f = fired.current
+      fired.current = false
+      return f
+    },
+    handlers: {
+      onPointerDown: (e: React.PointerEvent) => {
+        fired.current = false
+        g.current = { x: e.clientX, y: e.clientY, mode: 'idle', timer: window.setTimeout(fire, 500) }
+      },
+      onPointerMove: (e: React.PointerEvent) => {
+        const s = g.current
+        if (!s) return
+        const mx = e.clientX - s.x
+        const my = e.clientY - s.y
+        if (s.mode === 'idle') {
+          if (Math.abs(my) > 8) {
+            s.mode = 'scroll'
+            clearTimer()
+          } else if (mx < -8) {
+            s.mode = 'swipe'
+            clearTimer()
+            setDragging(true)
+          } else if (Math.abs(mx) > 8) clearTimer()
+        }
+        if (s.mode === 'swipe') setDx(Math.max(-90, Math.min(0, mx)))
+      },
+      onPointerUp: () => {
+        clearTimer()
+        if (g.current?.mode === 'swipe') {
+          fired.current = true // 밀기만 하고 놓아도 편집이 열리지 않게
+          if (dx < -60) fire()
+        }
+        g.current = null
+        setDragging(false)
+        setDx(0)
+      },
+      onPointerCancel: () => {
+        clearTimer()
+        g.current = null
+        setDragging(false)
+        setDx(0)
+      },
+      onContextMenu: (e: React.MouseEvent) => e.preventDefault(),
+    },
+  }
 }
 
 function WeekNotes({ babyId, weekStart }: { babyId: string; weekStart: string }) {

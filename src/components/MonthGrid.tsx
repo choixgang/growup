@@ -1,8 +1,8 @@
 import { parseISO } from 'date-fns'
 import { AlertTriangle } from 'lucide-react'
 import { circled, DAY_LABELS_EN, monthWeeks, stripsForWeek, todayStr } from '../lib/dates'
-import { dPlus, normalizeName, tapeColor, type IngredientAnalysis } from '../lib/rules'
-import type { Meal } from '../lib/types'
+import { dPlus, itemReaction, normalizeName, strongerReaction, tapeColor, type IngredientAnalysis } from '../lib/rules'
+import { REACTION_EMOJI, type ItemReaction, type Meal } from '../lib/types'
 
 interface Props {
   month: string
@@ -95,14 +95,14 @@ export default function MonthGrid({ month, meals, analysis, birthDate, variant, 
                   </div>
 
                   {isExport ? (
-                    <ExportCellBody meals={dayMeals} />
+                    <ExportCellBody meals={dayMeals} analysis={analysis} />
                   ) : (
-                    <AppCellBody meals={dayMeals} newNames={newKeys.map((k) => analysis.byKey.get(k)?.name ?? k)} />
+                    <AppCellBody meals={dayMeals} entries={dayEntries(dayMeals, newKeys, analysis)} />
                   )}
 
                   {hasCaution && (
                     <AlertTriangle
-                      className={`absolute text-warn ${isExport ? 'top-2 right-2' : 'top-1 right-[3px]'}`}
+                      className={`absolute text-alert ${isExport ? 'top-2 right-2' : 'top-1 right-[3px]'}`}
                       size={isExport ? 16 : 10}
                       strokeWidth={2}
                     />
@@ -143,22 +143,60 @@ export default function MonthGrid({ month, meals, analysis, birthDate, variant, 
   )
 }
 
-function AppCellBody({ meals, newNames }: { meals: Meal[]; newNames: string[] }) {
+interface DayEntry {
+  key: string
+  name: string
+  isNew: boolean
+  caution: boolean
+  reaction: ItemReaction | null
+}
+
+/** 칸에 보여줄 재료: 새 재료, 반응을 고른 재료, 이상 반응이 있었던 재료. 눈여겨볼 순서로 */
+function dayEntries(meals: Meal[], newKeys: string[], analysis: IngredientAnalysis): DayEntry[] {
+  const byKey = new Map<string, DayEntry>()
+  for (const m of meals) {
+    for (const it of m.items) {
+      const key = normalizeName(it.name)
+      if (!key) continue
+      const prev = byKey.get(key)
+      byKey.set(key, {
+        key,
+        name: prev?.name ?? it.name.trim(),
+        isNew: newKeys.includes(key),
+        caution: analysis.cautionKeys.has(key),
+        reaction: strongerReaction(prev?.reaction ?? null, itemReaction(m, key)),
+      })
+    }
+  }
+  const rank = (e: DayEntry) =>
+    e.reaction === 'issue' ? 0 : e.isNew ? 1 : e.caution ? 2 : e.reaction === 'dislike' ? 3 : e.reaction === 'like' ? 4 : 5
+  return [...byKey.values()].filter((e) => e.isNew || e.caution || e.reaction).sort((a, b) => rank(a) - rank(b))
+}
+
+function AppCellBody({ meals, entries }: { meals: Meal[]; entries: DayEntry[] }) {
   if (!meals.length) return null
   return (
     <div className="mt-0.5 flex min-w-0 flex-col gap-[1px]">
-      {newNames.slice(0, 2).map((n) => (
-        <span key={n} className="pen truncate text-[14px] leading-[1.05] text-rose-deep">
-          +{n}
+      {entries.slice(0, 2).map((e) => (
+        <span key={e.key} className="flex min-w-0 items-center">
+          <span
+            className={`pen truncate text-[14px] leading-[1.05] ${
+              e.caution || e.reaction === 'issue' ? 'text-alert' : e.isNew ? 'text-rose-deep' : ''
+            }`}
+          >
+            {e.isNew ? '+' : ''}
+            {e.name}
+          </span>
+          {e.reaction && <span className="shrink-0 text-[8.5px] leading-none">{REACTION_EMOJI[e.reaction]}</span>}
         </span>
       ))}
-      {newNames.length > 2 && <span className="pen text-[11px] text-rose-deep">+{newNames.length - 2}</span>}
+      {entries.length > 2 && <span className="pen text-[11px] leading-none text-ink-soft">+{entries.length - 2}</span>}
       <div className="mt-[2px] flex gap-[3px] pl-[1px]">
         {meals.map((m) => (
           <span
             key={m.id}
             className={`h-[5px] w-[5px] rounded-full ${
-              m.log ? (m.log.reaction === 'issue' ? 'bg-warn' : 'bg-ink-soft') : 'border border-ink-faint'
+              m.log ? (m.log.reaction === 'issue' ? 'bg-alert' : 'bg-ink-soft') : 'border border-ink-faint'
             }`}
           />
         ))}
@@ -167,29 +205,57 @@ function AppCellBody({ meals, newNames }: { meals: Meal[]; newNames: string[] })
   )
 }
 
-function ExportCellBody({ meals }: { meals: Meal[] }) {
+function ExportCellBody({ meals, analysis }: { meals: Meal[]; analysis: IngredientAnalysis }) {
   const multi = meals.length > 1
+  const mark = (m: Meal, name: string) => {
+    const key = normalizeName(name)
+    const r = itemReaction(m, key)
+    return {
+      red: analysis.cautionKeys.has(key) || r === 'issue',
+      emoji: r ? REACTION_EMOJI[r] : '',
+    }
+  }
   return (
     <div className="mt-1.5 flex flex-col gap-1">
-      {meals.map((m) =>
-        m.style === 'porridge' ? (
-          <div key={m.id} className="pen text-[29px] leading-[1.08] break-all">
-            {multi ? `${circled(m.slot)} ` : ''}
-            {m.title || m.items.map((it) => it.name).join('·')}
-            {m.totalMl != null ? ` ${m.totalMl}ml` : ''}
-          </div>
-        ) : (
-        <div key={m.id} className="pen text-[29px] leading-[1.08]">
-          {m.items.map((it, i) => (
-            <div key={i} className="whitespace-nowrap">
-              {multi && i === 0 ? `${circled(m.slot)} ` : multi ? ' ' : ''}
-              {it.name}
-              {it.grams != null ? ` ${it.grams}g` : ''}
+      {meals.map((m) => {
+        if (m.style === 'porridge') {
+          const flagged = m.items.filter((it) => {
+            const x = mark(m, it.name)
+            return x.red || x.emoji
+          })
+          return (
+            <div key={m.id} className="pen text-[29px] leading-[1.08] break-all">
+              {multi ? `${circled(m.slot)} ` : ''}
+              {m.title || m.items.map((it) => it.name).join('·')}
+              {m.totalMl != null ? ` ${m.totalMl}ml` : ''}
+              {flagged.map((it, i) => {
+                const x = mark(m, it.name)
+                return (
+                  <div key={i} className={`text-[24px] whitespace-nowrap ${x.red ? 'text-alert' : 'text-ink-soft'}`}>
+                    {it.name}
+                    {x.emoji && <span className="ml-0.5 text-[16px]">{x.emoji}</span>}
+                  </div>
+                )
+              })}
             </div>
-          ))}
-        </div>
-        ),
-      )}
+          )
+        }
+        return (
+          <div key={m.id} className="pen text-[29px] leading-[1.08]">
+            {m.items.map((it, i) => {
+              const x = mark(m, it.name)
+              return (
+                <div key={i} className={`whitespace-nowrap ${x.red ? 'text-alert' : ''}`}>
+                  {multi && i === 0 ? `${circled(m.slot)} ` : multi ? ' ' : ''}
+                  {it.name}
+                  {it.grams != null ? ` ${it.grams}g` : ''}
+                  {x.emoji && <span className="ml-0.5 text-[16px]">{x.emoji}</span>}
+                </div>
+              )
+            })}
+          </div>
+        )
+      })}
     </div>
   )
 }

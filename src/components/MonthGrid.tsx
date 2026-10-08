@@ -1,7 +1,7 @@
 import { parseISO } from 'date-fns'
 import { AlertTriangle } from 'lucide-react'
 import { circled, DAY_LABELS_EN, monthWeeks, stripsForWeek, todayStr } from '../lib/dates'
-import { dPlus, itemReaction, normalizeName, strongerReaction, tapeColor, type IngredientAnalysis } from '../lib/rules'
+import { dPlus, itemReaction, mealReactions, normalizeName, strongerReaction, tapeColor, type IngredientAnalysis } from '../lib/rules'
 import type { ItemReaction, Meal } from '../lib/types'
 import ReactionIcon from './ReactionIcon'
 
@@ -226,6 +226,9 @@ function ExportCellBody({ meals, analysis }: { meals: Meal[]; analysis: Ingredie
               {multi ? `${circled(m.slot)} ` : ''}
               {m.title || m.items.map((it) => it.name).join('·')}
               {m.totalMl != null ? ` ${m.totalMl}ml` : ''}
+              {mealReactions(m).map((r) => (
+                <ReactionIcon key={r} reaction={r} className="ml-1 text-[20px]" />
+              ))}
               {flagged.map((it, i) => {
                 const x = mark(m, it.name)
                 return (

@@ -16,7 +16,7 @@ import {
   useWeekNote,
 } from '../data/hooks'
 import { circled, DAY_LABELS_EN, todayStr, weekDates, weekStartOf, ymd } from '../lib/dates'
-import { dPlus, itemReaction, normalizeName, type IngredientAnalysis } from '../lib/rules'
+import { dPlus, itemReaction, mealReactions, normalizeName, type IngredientAnalysis } from '../lib/rules'
 import type { Meal, WeekNote } from '../lib/types'
 import ReactionIcon from '../components/ReactionIcon'
 
@@ -272,6 +272,9 @@ function MealRow({
             {multi && <span className="text-ink-soft">{circled(meal.slot)}</span>}
             <span>{meal.title || '죽'}</span>
             {meal.totalMl != null && <span className="text-ink-soft">{meal.totalMl}ml</span>}
+            {mealReactions(meal).map((r) => (
+              <ReactionIcon key={r} reaction={r} className="self-center text-[14px]" />
+            ))}
           </div>
         )}
         <div
@@ -313,13 +316,13 @@ function MealRow({
             <span className="pen text-[17px]">
               {[
                 log.eatenAmount && `먹은 양 ${log.eatenAmount}`,
-                !hasItemReactions && log.preference && PREF_LABEL[log.preference],
+                !hasItemReactions && !porridge && log.preference && PREF_LABEL[log.preference],
                 log.reaction === 'issue' || hasItemReactions ? null : '반응 없음',
               ]
                 .filter(Boolean)
                 .join(' · ')}
             </span>
-            {log.reaction === 'issue' && (log.reactionNote || !hasItemReactions) && (
+            {log.reaction === 'issue' && (log.reactionNote || (!hasItemReactions && !porridge)) && (
               <span className="pen text-[17px] text-alert">⚠ {log.reactionNote || '이상 반응'}</span>
             )}
           </div>

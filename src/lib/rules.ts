@@ -132,6 +132,13 @@ export function summarizeMonth(meals: Meal[], analysis: IngredientAnalysis, mont
     .sort((a, b) => a.date.localeCompare(b.date) || a.slot - b.slot)
   for (const meal of sorted) {
     const log = meal.log!
+    // 죽은 어느 재료 때문인지 알기 어려워 재료 대신 죽 이름으로 모은다
+    if (meal.style === 'porridge' && !hasItemReactions(meal)) {
+      const pref = log.preference ? PREF_REACTION[log.preference] : null
+      const name = meal.title?.trim() || meal.items.map((i) => i.name.trim()).join('·')
+      if (name) last.set(`죽:${normalizeName(name)}`, { name, r: pref === 'like' || pref === 'dislike' ? pref : null })
+      continue
+    }
     for (const item of meal.items) {
       const key = normalizeName(item.name)
       if (!key) continue
@@ -191,6 +198,21 @@ function hasItemReactions(meal: Meal): boolean {
 function issueKeys(meal: Meal): string[] {
   const r = meal.log?.itemReactions ?? {}
   return Object.keys(r).filter((k) => r[k] === 'issue')
+}
+
+const PREF_REACTION = { like: 'like', normal: 'normal', refuse: 'dislike' } as const
+
+/**
+ * 끼니 전체 반응 (죽 이유식, 예전 기록). 재료별 반응을 고른 끼니는 빈 배열.
+ * 기호도 하나 + 이상 반응이 있으면 'issue' 를 덧붙인다.
+ */
+export function mealReactions(meal: Meal): ItemReaction[] {
+  const log = meal.log
+  if (!log || hasItemReactions(meal)) return []
+  const out: ItemReaction[] = []
+  if (log.preference) out.push(PREF_REACTION[log.preference])
+  if (log.reaction === 'issue') out.push('issue')
+  return out
 }
 
 /** 이 끼니에서 재료(정규화 key)에 남긴 반응. 반응을 안 고른 재료는 없음 */

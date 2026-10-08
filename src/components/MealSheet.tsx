@@ -10,7 +10,7 @@ import ReactionIcon from './ReactionIcon'
 import { ingredientsFromTitle } from '../lib/ingredients'
 import { preparePhoto } from '../lib/image'
 import { circled } from '../lib/dates'
-import { emptyLog, ITEM_REACTIONS, type FeedingStyle, type ItemReaction, type Meal, type MealItem, type MealLog } from '../lib/types'
+import { emptyLog, ITEM_REACTIONS, type FeedingStyle, type ItemReaction, type Meal, type MealItem, type MealLog, type Preference } from '../lib/types'
 
 interface Props {
   babyId: string
@@ -71,8 +71,11 @@ export default function MealSheet(props: Props) {
   )
 
   // 예전 기록(끼니 전체 반응)은 재료별 반응을 하나도 안 골랐을 때만 그 값을 유지한다
+  // 죽은 재료별로 알아채기 어려워 끼니 전체의 기호도·이상 반응만 받는다
   const hasIssue = log
-    ? Object.keys(log.itemReactions ?? {}).length
+    ? porridge
+      ? log.reaction === 'issue'
+      : Object.keys(log.itemReactions ?? {}).length
       ? Object.values(log.itemReactions ?? {}).includes('issue')
       : log.reaction === 'issue'
     : false
@@ -119,6 +122,7 @@ export default function MealSheet(props: Props) {
   }
 
   function finishLog(l: MealLog): MealLog {
+    if (porridge) return { ...l, itemReactions: {}, loggedAt: meal?.log?.loggedAt ?? new Date().toISOString() }
     const keys = new Set(cleanItems.map((i) => normalizeName(i.name)))
     const reactions = Object.fromEntries(Object.entries(l.itemReactions ?? {}).filter(([k]) => keys.has(k)))
     const picked = Object.keys(reactions).length > 0
@@ -358,8 +362,10 @@ export default function MealSheet(props: Props) {
             </label>
 
             <div>
-              <span className="text-[12px] text-ink-soft">재료별 반응</span>
-              {cleanItems.length ? (
+              <span className="text-[12px] text-ink-soft">{porridge ? '죽 전체 반응' : '재료별 반응'}</span>
+              {porridge ? (
+                <PorridgeReaction log={log} onChange={setLog} />
+              ) : cleanItems.length ? (
                 <div className="mt-1 flex flex-col">
                   {cleanItems.map((it) => {
                     const key = normalizeName(it.name)
@@ -471,6 +477,39 @@ export default function MealSheet(props: Props) {
           </button>
         </div>
       </div>
+    </div>
+  )
+}
+
+const PREF_OF: Partial<Record<ItemReaction, Preference>> = { like: 'like', normal: 'normal', dislike: 'refuse' }
+
+/** 죽: 기호도(좋아함·보통·싫어함 중 하나)와 이상 반응(따로 켜고 끔) */
+function PorridgeReaction({ log, onChange }: { log: MealLog; onChange: (l: MealLog) => void }) {
+  return (
+    <div className="mt-1">
+      <div className="flex flex-wrap items-center gap-1.5">
+        {ITEM_REACTIONS.map((r) => {
+          const isIssue = r.value === 'issue'
+          const on = isIssue ? log.reaction === 'issue' : log.preference === PREF_OF[r.value]
+          return (
+            <button
+              key={r.value}
+              aria-pressed={on}
+              className={`flex items-center gap-1 rounded-full px-3 py-1.5 text-[13px] transition ${
+                on ? (isIssue ? 'bg-alert/15 text-alert ring-1 ring-alert' : 'bg-rose-soft ring-1 ring-ink-soft') : 'text-ink-soft'
+              }`}
+              onClick={() =>
+                isIssue
+                  ? onChange({ ...log, reaction: on ? 'none' : 'issue' })
+                  : onChange({ ...log, preference: on ? null : PREF_OF[r.value]! })
+              }
+            >
+              <ReactionIcon reaction={r.value} className="text-[16px]" /> {r.label}
+            </button>
+          )
+        })}
+      </div>
+      <p className="mt-1 text-[11px] text-ink-faint">죽은 어떤 재료 때문인지 알기 어려워 전체 반응만 적어요</p>
     </div>
   )
 }

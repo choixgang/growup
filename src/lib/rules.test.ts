@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { analyzeIngredients, checkDraft, dPlus, summarizeMonth } from './rules'
+import { analyzeIngredients, checkDraft, dPlus, mealReactions, summarizeMonth } from './rules'
 import type { Meal } from './types'
 
 let n = 0
@@ -115,5 +115,31 @@ describe('summarizeMonth', () => {
     expect(s.newNames).toEqual(['감자', '애호박', '당근'])
     expect(s.liked).toEqual(['감자', '당근'])
     expect(s.disliked).toEqual(['애호박'])
+  })
+})
+
+describe('죽 이유식 반응', () => {
+  const porridge = (date: string, title: string, names: string[], log: Partial<NonNullable<Meal['log']>>): Meal => ({
+    ...meal(date, names),
+    style: 'porridge',
+    title,
+    log: { eatenAmount: '', reaction: 'none', reactionNote: '', preference: null, photoUrl: null, loggedAt: '', itemReactions: {}, ...log },
+  })
+
+  it('끼니 전체 기호도와 이상 반응을 아이콘으로 돌려준다', () => {
+    expect(mealReactions(porridge('2026-10-01', '소고기죽', ['쌀', '소고기'], { preference: 'refuse', reaction: 'issue' }))).toEqual([
+      'dislike',
+      'issue',
+    ])
+  })
+
+  it('좋아함·싫어함 요약에는 재료 대신 죽 이름이 들어간다', () => {
+    const meals = [
+      porridge('2026-10-01', '소고기죽', ['쌀', '소고기'], { preference: 'like' }),
+      porridge('2026-10-02', '', ['쌀', '애호박'], { preference: 'refuse' }),
+    ]
+    const s = summarizeMonth(meals, analyzeIngredients(meals, 3), '2026-10')
+    expect(s.liked).toEqual(['소고기죽'])
+    expect(s.disliked).toEqual(['쌀·애호박'])
   })
 })

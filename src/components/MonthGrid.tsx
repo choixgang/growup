@@ -3,7 +3,7 @@ import { AlertTriangle } from 'lucide-react'
 import { circled, DAY_LABELS_EN, monthWeeks, stripsForWeek, todayStr } from '../lib/dates'
 import { dPlus, itemReaction, normalizeName, strongerReaction, tapeColor, type IngredientAnalysis } from '../lib/rules'
 import type { ItemReaction, Meal } from '../lib/types'
-import ReactionEmoji from './ReactionEmoji'
+import ReactionIcon from './ReactionIcon'
 
 interface Props {
   month: string
@@ -186,7 +186,7 @@ function AppCellBody({ meals, entries }: { meals: Meal[]; entries: DayEntry[] })
             {e.isNew ? '+' : ''}
             {e.name}
           </span>
-          {e.reaction && <ReactionEmoji reaction={e.reaction} className="shrink-0 text-[8.5px] leading-none" />}
+          {e.reaction && <ReactionIcon reaction={e.reaction} className="ml-px shrink-0 text-[9px] leading-none" />}
         </span>
       ))}
       <div className="mt-[2px] flex gap-[3px] pl-[1px]">
@@ -231,7 +231,7 @@ function ExportCellBody({ meals, analysis }: { meals: Meal[]; analysis: Ingredie
                 return (
                   <div key={i} className={`text-[24px] whitespace-nowrap ${x.red ? 'text-alert' : 'text-ink-soft'}`}>
                     {it.name}
-                    {x.reaction && <ReactionEmoji reaction={x.reaction} className="ml-0.5 text-[16px]" />}
+                    {x.reaction && <ReactionIcon reaction={x.reaction} className="ml-1 text-[20px]" />}
                   </div>
                 )
               })}
@@ -247,7 +247,7 @@ function ExportCellBody({ meals, analysis }: { meals: Meal[]; analysis: Ingredie
                   {multi && i === 0 ? `${circled(m.slot)} ` : multi ? ' ' : ''}
                   {it.name}
                   {it.grams != null ? ` ${it.grams}g` : ''}
-                  {x.reaction && <ReactionEmoji reaction={x.reaction} className="ml-0.5 text-[16px]" />}
+                  {x.reaction && <ReactionIcon reaction={x.reaction} className="ml-1 text-[20px]" />}
                 </div>
               )
             })}

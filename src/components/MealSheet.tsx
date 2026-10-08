@@ -6,7 +6,7 @@ import { AlertTriangle, Camera, Plus, Trash2, X } from 'lucide-react'
 import { repo } from '../data'
 import { checkDraft, normalizeName } from '../lib/rules'
 import { pairingNotes, pairingSuggestions } from '../lib/pairings'
-import ReactionEmoji from './ReactionEmoji'
+import ReactionIcon from './ReactionIcon'
 import { ingredientsFromTitle } from '../lib/ingredients'
 import { preparePhoto } from '../lib/image'
 import { circled } from '../lib/dates'
@@ -387,7 +387,7 @@ export default function MealSheet(props: Props) {
                             }`}
                             onClick={() => setItemReaction(key, picked === r.value ? null : r.value)}
                           >
-                            <ReactionEmoji reaction={r.value} />
+                            <ReactionIcon reaction={r.value} />
                           </button>
                         ))}
                       </div>
@@ -397,7 +397,7 @@ export default function MealSheet(props: Props) {
                     {ITEM_REACTIONS.map((r, i) => (
                       <span key={r.value}>
                         {i > 0 && '  ·  '}
-                        <ReactionEmoji reaction={r.value} /> {r.label}
+                        <ReactionIcon reaction={r.value} /> {r.label}
                       </span>
                     ))}
                   </p>

@@ -65,9 +65,18 @@ function MemoLines({ value, isExport, onCommit }: { value: string; isExport: boo
     <label className="flex flex-col">
       <span className={`text-ink-soft ${isExport ? 'text-[19px]' : 'text-[12px]'}`}>메모</span>
       {isExport ? (
-        <p className="pen overflow-hidden text-[32px] whitespace-pre-wrap" style={lined}>
-          {value}
-        </p>
+        // 이미지에서는 배경 그라디언트 줄이 흐리게 나와서 줄마다 밑줄을 긋는다
+        <div className="pen text-[32px]">
+          {Array.from({ length: MEMO_LINES }, (_, i) => (
+            <p
+              key={i}
+              className="truncate border-b border-line-strong"
+              style={{ height: lineH, lineHeight: `${lineH}px` }}
+            >
+              {value.split('\n')[i] ?? ''}
+            </p>
+          ))}
+        </div>
       ) : (
         <textarea
           className="pen w-full resize-none overflow-y-auto bg-transparent text-[19px] outline-none"

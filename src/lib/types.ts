@@ -55,19 +55,12 @@ export type Preference = 'like' | 'normal' | 'refuse'
 /** 재료별 반응. 한 재료에 하나만 고른다 */
 export type ItemReaction = 'like' | 'normal' | 'dislike' | 'issue'
 
-export const ITEM_REACTIONS: { value: ItemReaction; emoji: string; label: string }[] = [
-  { value: 'like', emoji: '❤️', label: '좋아함' },
-  { value: 'normal', emoji: '💚', label: '보통' },
-  { value: 'dislike', emoji: '💔', label: '싫어함' },
-  { value: 'issue', emoji: '⚠️', label: '이상 반응' },
+export const ITEM_REACTIONS: { value: ItemReaction; label: string }[] = [
+  { value: 'like', label: '좋아함' },
+  { value: 'normal', label: '보통' },
+  { value: 'dislike', label: '싫어함' },
+  { value: 'issue', label: '이상 반응' },
 ]
-
-export const REACTION_EMOJI: Record<ItemReaction, string> = {
-  like: '❤️',
-  normal: '💚',
-  dislike: '💔',
-  issue: '⚠️',
-}
 
 export interface MealLog {
   eatenAmount: string // 자유 입력 (예: "30ml", "절반")

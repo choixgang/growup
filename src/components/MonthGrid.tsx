@@ -2,7 +2,8 @@ import { parseISO } from 'date-fns'
 import { AlertTriangle } from 'lucide-react'
 import { circled, DAY_LABELS_EN, monthWeeks, stripsForWeek, todayStr } from '../lib/dates'
 import { dPlus, itemReaction, normalizeName, strongerReaction, tapeColor, type IngredientAnalysis } from '../lib/rules'
-import { REACTION_EMOJI, type ItemReaction, type Meal } from '../lib/types'
+import type { ItemReaction, Meal } from '../lib/types'
+import ReactionEmoji from './ReactionEmoji'
 
 interface Props {
   month: string
@@ -187,7 +188,7 @@ function AppCellBody({ meals, entries }: { meals: Meal[]; entries: DayEntry[] })
             {e.isNew ? '+' : ''}
             {e.name}
           </span>
-          {e.reaction && <span className="shrink-0 text-[8.5px] leading-none">{REACTION_EMOJI[e.reaction]}</span>}
+          {e.reaction && <ReactionEmoji reaction={e.reaction} className="shrink-0 text-[8.5px] leading-none" />}
         </span>
       ))}
       {entries.length > 2 && <span className="pen text-[11px] leading-none text-ink-soft">+{entries.length - 2}</span>}
@@ -212,7 +213,7 @@ function ExportCellBody({ meals, analysis }: { meals: Meal[]; analysis: Ingredie
     const r = itemReaction(m, key)
     return {
       red: analysis.cautionKeys.has(key) || r === 'issue',
-      emoji: r ? REACTION_EMOJI[r] : '',
+      reaction: r,
     }
   }
   return (
@@ -221,7 +222,7 @@ function ExportCellBody({ meals, analysis }: { meals: Meal[]; analysis: Ingredie
         if (m.style === 'porridge') {
           const flagged = m.items.filter((it) => {
             const x = mark(m, it.name)
-            return x.red || x.emoji
+            return x.red || x.reaction
           })
           return (
             <div key={m.id} className="pen text-[29px] leading-[1.08] break-all">
@@ -233,7 +234,7 @@ function ExportCellBody({ meals, analysis }: { meals: Meal[]; analysis: Ingredie
                 return (
                   <div key={i} className={`text-[24px] whitespace-nowrap ${x.red ? 'text-alert' : 'text-ink-soft'}`}>
                     {it.name}
-                    {x.emoji && <span className="ml-0.5 text-[16px]">{x.emoji}</span>}
+                    {x.reaction && <ReactionEmoji reaction={x.reaction} className="ml-0.5 text-[16px]" />}
                   </div>
                 )
               })}
@@ -249,7 +250,7 @@ function ExportCellBody({ meals, analysis }: { meals: Meal[]; analysis: Ingredie
                   {multi && i === 0 ? `${circled(m.slot)} ` : multi ? ' ' : ''}
                   {it.name}
                   {it.grams != null ? ` ${it.grams}g` : ''}
-                  {x.emoji && <span className="ml-0.5 text-[16px]">{x.emoji}</span>}
+                  {x.reaction && <ReactionEmoji reaction={x.reaction} className="ml-0.5 text-[16px]" />}
                 </div>
               )
             })}

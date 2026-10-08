@@ -15,7 +15,8 @@ import {
 } from '../data/hooks'
 import { circled, DAY_LABELS_EN, todayStr, weekDates, weekStartOf, ymd } from '../lib/dates'
 import { dPlus, itemReaction, normalizeName, type IngredientAnalysis } from '../lib/rules'
-import { REACTION_EMOJI, type Meal, type WeekNote } from '../lib/types'
+import type { Meal, WeekNote } from '../lib/types'
+import ReactionEmoji from '../components/ReactionEmoji'
 
 const PREF_LABEL = { like: '♡ 좋아함', normal: '보통', refuse: '거부' } as const
 
@@ -226,7 +227,7 @@ function MealRow({
                 {caution && r !== 'issue' && <AlertTriangle size={12} className="self-center text-alert" />}
                 <span className={caution ? 'text-alert' : newKeys.has(key) ? 'text-rose-deep' : ''}>{it.name}</span>
                 {it.grams != null && <span className="text-ink-soft">{it.grams}g</span>}
-                {r && <span className="self-center text-[11px] not-italic">{REACTION_EMOJI[r]}</span>}
+                {r && <ReactionEmoji reaction={r} className="self-center text-[11px] not-italic" />}
                 {newKeys.has(key) && (
                   <span className="title-serif ml-0.5 rounded-sm bg-rose-soft px-1 text-[10px] tracking-wider not-italic">
                     NEW

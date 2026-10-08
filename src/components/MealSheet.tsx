@@ -5,6 +5,7 @@ import { AlertTriangle, Camera, Plus, Trash2, X } from 'lucide-react'
 import { repo } from '../data'
 import { checkDraft, normalizeName } from '../lib/rules'
 import { pairingNotes, pairingSuggestions } from '../lib/pairings'
+import ReactionEmoji from './ReactionEmoji'
 import { preparePhoto } from '../lib/image'
 import { circled } from '../lib/dates'
 import { emptyLog, ITEM_REACTIONS, type FeedingStyle, type ItemReaction, type Meal, type MealItem, type MealLog } from '../lib/types'
@@ -334,14 +335,19 @@ export default function MealSheet(props: Props) {
                             }`}
                             onClick={() => setItemReaction(key, picked === r.value ? null : r.value)}
                           >
-                            {r.emoji}
+                            <ReactionEmoji reaction={r.value} />
                           </button>
                         ))}
                       </div>
                     )
                   })}
                   <p className="mt-1 text-[11px] text-ink-faint">
-                    {ITEM_REACTIONS.map((r) => `${r.emoji} ${r.label}`).join('  ·  ')}
+                    {ITEM_REACTIONS.map((r, i) => (
+                      <span key={r.value}>
+                        {i > 0 && '  ·  '}
+                        <ReactionEmoji reaction={r.value} /> {r.label}
+                      </span>
+                    ))}
                   </p>
                 </div>
               ) : (

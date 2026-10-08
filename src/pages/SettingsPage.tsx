@@ -4,6 +4,7 @@ import { Minus, Plus, X } from 'lucide-react'
 import { useCtx } from '../App'
 import { repo } from '../data'
 import { useMeals } from '../data/hooks'
+import StylePicker from '../components/StylePicker'
 
 export default function SettingsPage() {
   const ctx = useCtx()
@@ -65,6 +66,14 @@ export default function SettingsPage() {
             저장
           </button>
         )}
+      </Section>
+
+      <Section title="이유식 방식">
+        <p className="mb-2 text-[12px] text-ink-soft">새 끼니를 적을 때 이 방식이 먼저 보여요. 끼니마다 바꿀 수도 있어요.</p>
+        <StylePicker
+          value={ctx.household.feedingStyle}
+          onChange={(v) => run(() => repo.updateHousehold(ctx.household.id, { feedingStyle: v }))}
+        />
       </Section>
 
       <Section title="새 재료 테스트 간격">

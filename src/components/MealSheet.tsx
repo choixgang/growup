@@ -6,7 +6,7 @@ import { repo } from '../data'
 import { checkDraft } from '../lib/rules'
 import { preparePhoto } from '../lib/image'
 import { circled } from '../lib/dates'
-import { emptyLog, type Meal, type MealItem, type MealLog, type Preference } from '../lib/types'
+import { emptyLog, type FeedingStyle, type Meal, type MealItem, type MealLog, type Preference } from '../lib/types'
 
 interface Props {
   babyId: string
@@ -17,6 +17,7 @@ interface Props {
   intervalDays: number
   knownIngredients: string[]
   ingredientNames: string[]
+  defaultStyle: FeedingStyle
   onSave: (meal: Omit<Meal, 'id' | 'updatedAt'> & { id?: string }) => Promise<unknown>
   onDelete: (id: string) => void
   onClose: () => void
@@ -30,6 +31,10 @@ const PREFS: { value: Preference; label: string }[] = [
 
 export default function MealSheet(props: Props) {
   const { meal, date, slot } = props
+  const [style, setStyle] = useState<FeedingStyle>(meal ? (meal.style ?? 'topping') : props.defaultStyle)
+  const [title, setTitle] = useState(meal?.title ?? '')
+  const [totalMl, setTotalMl] = useState<number | null>(meal?.totalMl ?? null)
+  const porridge = style === 'porridge'
   const [items, setItems] = useState<MealItem[]>(meal?.items.length ? meal.items : [{ name: '', grams: null }])
   const [log, setLog] = useState<MealLog | null>(meal?.log ?? null)
   const [saving, setSaving] = useState(false)
@@ -85,7 +90,10 @@ export default function MealSheet(props: Props) {
         babyId: props.babyId,
         date,
         slot,
-        items: cleanItems.map((i) => ({ name: i.name.trim(), grams: i.grams })),
+        style,
+        title: porridge ? title.trim() : '',
+        totalMl: porridge ? totalMl : null,
+        items: cleanItems.map((i) => ({ name: i.name.trim(), grams: porridge ? null : i.grams })),
         log: log ? { ...log, loggedAt: meal?.log?.loggedAt ?? new Date().toISOString() } : null,
       })
       props.onClose()
@@ -113,7 +121,44 @@ export default function MealSheet(props: Props) {
         </div>
 
         {/* 식단 */}
-        <h3 className="title-serif mt-4 text-[20px] italic">Menu</h3>
+        <div className="mt-4 flex items-center justify-between">
+          <h3 className="title-serif text-[20px] italic">Menu</h3>
+          <div className="flex rounded-full bg-rose-soft p-0.5 text-[13px]">
+            {(['topping', 'porridge'] as const).map((v) => (
+              <button
+                key={v}
+                className={`rounded-full px-3.5 py-1 ${style === v ? 'bg-ink text-paper' : 'text-ink-soft'}`}
+                onClick={() => setStyle(v)}
+              >
+                {v === 'topping' ? '토핑' : '죽'}
+              </button>
+            ))}
+          </div>
+        </div>
+        {porridge && (
+          <div className="mt-1 flex items-end gap-2">
+            <input
+              className="field pen min-w-0 flex-1 text-[22px]"
+              placeholder="죽 이름 (예: 소고기양배추죽)"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+            />
+            <div className="flex w-[96px] shrink-0 items-end">
+              <input
+                className="field pen w-full text-right text-[22px]"
+                inputMode="decimal"
+                placeholder="0"
+                value={totalMl ?? ''}
+                onChange={(e) => {
+                  const v = e.target.value.replace(/[^0-9.]/g, '')
+                  setTotalMl(v === '' ? null : Number(v))
+                }}
+              />
+              <span className="pen shrink-0 pb-1 pl-0.5 text-[20px] text-ink-soft">ml</span>
+            </div>
+          </div>
+        )}
+        {porridge && <p className="mt-3 text-[12px] text-ink-soft">들어간 재료</p>}
         <datalist id="ingredient-names">
           {props.ingredientNames.map((n) => (
             <option key={n} value={n} />
@@ -129,19 +174,21 @@ export default function MealSheet(props: Props) {
                 value={it.name}
                 onChange={(e) => updateItem(i, { name: e.target.value })}
               />
-              <div className="flex w-[78px] items-end">
-                <input
-                  className="field pen w-full text-right text-[22px]"
-                  inputMode="decimal"
-                  placeholder="0"
-                  value={it.grams ?? ''}
-                  onChange={(e) => {
-                    const v = e.target.value.replace(/[^0-9.]/g, '')
-                    updateItem(i, { grams: v === '' ? null : Number(v) })
-                  }}
-                />
-                <span className="pen pb-1 pl-0.5 text-[20px] text-ink-soft">g</span>
-              </div>
+              {!porridge && (
+                <div className="flex w-[78px] items-end">
+                  <input
+                    className="field pen w-full text-right text-[22px]"
+                    inputMode="decimal"
+                    placeholder="0"
+                    value={it.grams ?? ''}
+                    onChange={(e) => {
+                      const v = e.target.value.replace(/[^0-9.]/g, '')
+                      updateItem(i, { grams: v === '' ? null : Number(v) })
+                    }}
+                  />
+                  <span className="pen pb-1 pl-0.5 text-[20px] text-ink-soft">g</span>
+                </div>
+              )}
               <button
                 aria-label="재료 삭제"
                 className="p-1.5 text-ink-faint"

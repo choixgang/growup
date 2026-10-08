@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { ArrowLeft, KeyRound, Sprout } from 'lucide-react'
 import { repo } from '../data'
+import type { FeedingStyle } from '../lib/types'
+import StylePicker from '../components/StylePicker'
 
 type Step = 'choose' | 'create' | 'join'
 
@@ -11,6 +13,7 @@ export default function OnboardingPage() {
   const [step, setStep] = useState<Step>(repo.kind === 'supabase' ? 'choose' : 'create')
   const [name, setName] = useState('')
   const [birth, setBirth] = useState('')
+  const [style, setStyle] = useState<FeedingStyle>('topping')
   const [code, setCode] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -20,7 +23,7 @@ export default function OnboardingPage() {
     setBusy(true)
     setError(null)
     try {
-      if (step === 'create') await repo.createHousehold(name.trim(), birth)
+      if (step === 'create') await repo.createHousehold(name.trim(), birth, style)
       else await repo.joinHousehold(code)
       await qc.invalidateQueries({ queryKey: ['context'] })
     } catch (err) {
@@ -92,6 +95,10 @@ export default function OnboardingPage() {
                     onChange={(e) => setBirth(e.target.value)}
                   />
                 </label>
+                <div className="flex flex-col gap-1">
+                  <span className="text-[12px] text-ink-soft">이유식 방식 · 나중에 설정에서 바꿀 수 있어요</span>
+                  <StylePicker value={style} onChange={setStyle} />
+                </div>
               </>
             ) : (
               <label className="flex flex-col gap-1">

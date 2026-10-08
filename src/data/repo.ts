@@ -1,4 +1,4 @@
-import type { Baby, Household, Meal, MonthNote, WeekNote } from '../lib/types'
+import type { Baby, FeedingStyle, Household, Meal, MonthNote, WeekNote } from '../lib/types'
 
 export interface AppContext {
   household: Household
@@ -33,12 +33,12 @@ export interface Repo {
 
   // 가정·아기
   getContext(): Promise<AppContext | null>
-  createHousehold(babyName: string, birthDate: string): Promise<void>
+  createHousehold(babyName: string, birthDate: string, feedingStyle: FeedingStyle): Promise<void>
   /** 초대 코드로 참여. 이미 다른 다이어리에 있으면 그곳에서 나와 옮겨간다 */
   joinHousehold(inviteCode: string): Promise<void>
   getMemberCount(householdId: string): Promise<number>
   updateBaby(babyId: string, patch: Pick<Baby, 'name' | 'birthDate'>): Promise<void>
-  updateHousehold(householdId: string, patch: Partial<Pick<Household, 'testIntervalDays' | 'knownIngredients'>>): Promise<void>
+  updateHousehold(householdId: string, patch: Partial<Pick<Household, 'testIntervalDays' | 'knownIngredients' | 'feedingStyle'>>): Promise<void>
 
   // 식단
   listMeals(babyId: string): Promise<Meal[]>

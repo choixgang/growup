@@ -171,7 +171,14 @@ function ExportCellBody({ meals }: { meals: Meal[] }) {
   const multi = meals.length > 1
   return (
     <div className="mt-1.5 flex flex-col gap-1">
-      {meals.map((m) => (
+      {meals.map((m) =>
+        m.style === 'porridge' ? (
+          <div key={m.id} className="pen text-[29px] leading-[1.08] break-all">
+            {multi ? `${circled(m.slot)} ` : ''}
+            {m.title || m.items.map((it) => it.name).join('·')}
+            {m.totalMl != null ? ` ${m.totalMl}ml` : ''}
+          </div>
+        ) : (
         <div key={m.id} className="pen text-[29px] leading-[1.08]">
           {m.items.map((it, i) => (
             <div key={i} className="whitespace-nowrap">
@@ -181,7 +188,8 @@ function ExportCellBody({ meals }: { meals: Meal[] }) {
             </div>
           ))}
         </div>
-      ))}
+        ),
+      )}
     </div>
   )
 }

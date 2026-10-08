@@ -126,6 +126,7 @@ export default function WeekPage() {
           intervalDays={ctx.household.testIntervalDays}
           knownIngredients={ctx.household.knownIngredients}
           ingredientNames={ingredientNames}
+          defaultStyle={ctx.household.feedingStyle}
           onSave={(m) => saveMeal.mutateAsync(m)}
           onDelete={(id) => deleteMeal.mutate(id)}
           onClose={() => setEditing(null)}
@@ -148,10 +149,22 @@ function MealRow({
 }) {
   const newKeys = new Set(analysis.newByDate.get(meal.date) ?? [])
   const log = meal.log
+  const porridge = meal.style === 'porridge'
   return (
     <button onClick={onClick} className="block w-full border-b border-dashed border-line py-1 text-left last:border-0">
-      <div className="pen flex flex-wrap items-baseline gap-x-2.5 text-[21px] leading-[1.2]">
-        {multi && <span className="text-ink-soft">{circled(meal.slot)}</span>}
+      {porridge && (
+        <div className="pen flex flex-wrap items-baseline gap-x-2 text-[21px] leading-[1.2]">
+          {multi && <span className="text-ink-soft">{circled(meal.slot)}</span>}
+          <span>{meal.title || '죽'}</span>
+          {meal.totalMl != null && <span className="text-ink-soft">{meal.totalMl}ml</span>}
+        </div>
+      )}
+      <div
+        className={`pen flex flex-wrap items-baseline ${
+          porridge ? 'gap-x-1.5 text-[17px] leading-[1.15] text-ink-soft' : 'gap-x-2.5 text-[21px] leading-[1.2]'
+        }`}
+      >
+        {multi && !porridge && <span className="text-ink-soft">{circled(meal.slot)}</span>}
         {meal.items.map((it, i) => {
           const key = normalizeName(it.name)
           return (

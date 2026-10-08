@@ -1,5 +1,5 @@
 import { createClient, type SupabaseClient, type User } from '@supabase/supabase-js'
-import type { Meal, MealItem, MealLog, MonthNote, Stage, WeekNote, ChecklistItem } from '../lib/types'
+import type { FeedingStyle, Meal, MealItem, MealLog, MonthNote, Stage, WeekNote, ChecklistItem } from '../lib/types'
 import type { AppContext, Repo, SessionUser } from './repo'
 
 interface MealRow {
@@ -7,6 +7,9 @@ interface MealRow {
   baby_id: string
   date: string
   slot: number
+  style: FeedingStyle | null
+  title: string | null
+  total_ml: number | null
   items: MealItem[]
   log: MealLog | null
   updated_at: string
@@ -18,6 +21,9 @@ function toMeal(r: MealRow): Meal {
     babyId: r.baby_id,
     date: r.date,
     slot: r.slot,
+    style: r.style ?? 'topping',
+    title: r.title ?? '',
+    totalMl: r.total_ml,
     items: r.items ?? [],
     log: r.log,
     updatedAt: r.updated_at,
@@ -118,6 +124,7 @@ export function createSupabaseRepo(url: string, anonKey: string): Repo {
         invite_code: string
         test_interval_days: number
         known_ingredients: string[]
+        feeding_style?: FeedingStyle
       }
       const babies = check(
         await sb.from('babies').select('*').eq('household_id', hid).order('created_at').limit(1),
@@ -130,12 +137,14 @@ export function createSupabaseRepo(url: string, anonKey: string): Repo {
           inviteCode: h.invite_code,
           testIntervalDays: h.test_interval_days,
           knownIngredients: h.known_ingredients ?? [],
+          feedingStyle: h.feeding_style ?? 'topping',
         },
         baby: { id: b.id, householdId: b.household_id, name: b.name, birthDate: b.birth_date },
       }
     },
-    async createHousehold(babyName, birthDate) {
-      check(await sb.rpc('create_household', { baby_name: babyName, baby_birth_date: birthDate }))
+    async createHousehold(babyName, birthDate, feedingStyle) {
+      const hid = check(await sb.rpc('create_household', { baby_name: babyName, baby_birth_date: birthDate })) as string
+      if (feedingStyle !== 'topping') check(await sb.from('households').update({ feeding_style: feedingStyle }).eq('id', hid))
     },
     async joinHousehold(inviteCode) {
       check(await sb.rpc('join_household', { code: inviteCode }))
@@ -152,6 +161,7 @@ export function createSupabaseRepo(url: string, anonKey: string): Repo {
       const row: Record<string, unknown> = {}
       if (patch.testIntervalDays !== undefined) row.test_interval_days = patch.testIntervalDays
       if (patch.knownIngredients !== undefined) row.known_ingredients = patch.knownIngredients
+      if (patch.feedingStyle !== undefined) row.feeding_style = patch.feedingStyle
       check(await sb.from('households').update(row).eq('id', householdId))
     },
 
@@ -165,6 +175,9 @@ export function createSupabaseRepo(url: string, anonKey: string): Repo {
         baby_id: input.babyId,
         date: input.date,
         slot: input.slot,
+        style: input.style ?? 'topping',
+        title: input.style === 'porridge' ? input.title?.trim() || null : null,
+        total_ml: input.style === 'porridge' ? (input.totalMl ?? null) : null,
         items: input.items,
         log: input.log,
         updated_at: new Date().toISOString(),

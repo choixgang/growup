@@ -65,11 +65,24 @@ export function createLocalRepo(): Repo {
     async getContext(): Promise<AppContext | null> {
       const db = load()
       if (!db.household || !db.baby) return null
-      return { household: { ...db.household, knownIngredients: db.household.knownIngredients ?? [] }, baby: db.baby }
+      return {
+        household: {
+          ...db.household,
+          knownIngredients: db.household.knownIngredients ?? [],
+          feedingStyle: db.household.feedingStyle ?? 'topping',
+        },
+        baby: db.baby,
+      }
     },
-    async createHousehold(babyName, birthDate) {
+    async createHousehold(babyName, birthDate, feedingStyle) {
       const db = load()
-      const household: Household = { id: uid(), inviteCode: '로컬 모드', testIntervalDays: 3, knownIngredients: [] }
+      const household: Household = {
+        id: uid(),
+        inviteCode: '로컬 모드',
+        testIntervalDays: 3,
+        knownIngredients: [],
+        feedingStyle,
+      }
       db.household = household
       db.baby = { id: uid(), householdId: household.id, name: babyName, birthDate }
       save(db)

@@ -13,11 +13,19 @@ export interface Baby {
   birthDate: string // yyyy-MM-dd
 }
 
+export type FeedingStyle = 'topping' | 'porridge'
+
+export const FEEDING_STYLE_LABEL: Record<FeedingStyle, string> = {
+  topping: '토핑',
+  porridge: '죽',
+}
+
 export interface Household {
   id: string
   inviteCode: string
   testIntervalDays: number
   knownIngredients: string[] // 앱을 쓰기 전에 이미 먹어본 재료 (새 재료로 보지 않음)
+  feedingStyle: FeedingStyle // 새 끼니를 적을 때 먼저 보여줄 방식
 }
 
 export interface MealItem {
@@ -44,6 +52,12 @@ export interface Meal {
   babyId: string
   date: string // yyyy-MM-dd
   slot: number // 1, 2, 3 ... (끼니 순서)
+  /** 예전 기록에는 없어서 토핑으로 본다 */
+  style?: FeedingStyle
+  /** 죽 이름 (예: 양배추당근감자소고기죽). 죽일 때만 */
+  title?: string
+  /** 죽 전체 용량 ml. 죽일 때만, 재료별 g은 적지 않는다 */
+  totalMl?: number | null
   items: MealItem[]
   log: MealLog | null
   updatedAt: string

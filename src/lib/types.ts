@@ -104,8 +104,15 @@ export interface MonthNote {
   babyId: string
   month: string // yyyy-MM
   stage: Stage
-  caution: string
-  goal: string
+  /** 이 달의 메모 (세 줄). 예전의 '주의해야 할 식재료'·'이 달의 목표'는 읽을 때 합쳐진다 */
+  memo: string
+}
+
+export const MEMO_LINES = 3
+
+/** 예전 두 칸(주의 재료, 목표)을 메모 한 칸으로 합친다 */
+export function legacyMemo(caution?: string | null, goal?: string | null): string {
+  return [caution, goal].map((s) => s?.trim()).filter(Boolean).join('\n')
 }
 
 export interface ChecklistItem {

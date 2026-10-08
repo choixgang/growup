@@ -1,12 +1,13 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { format, parseISO } from 'date-fns'
-import { ArrowLeft, Download, Share2 } from 'lucide-react'
+import { ArrowLeft, Download, Heart, HeartCrack, Share2, Sprout } from 'lucide-react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useCtx } from '../App'
 import MonthGrid from '../components/MonthGrid'
 import MonthInfo from '../components/MonthInfo'
 import { useAnalysis, useMeals, useMonthNote } from '../data/hooks'
 import { renderNodeToImage } from '../lib/exportImage'
+import { summarizeMonth } from '../lib/rules'
 
 const SCENE_W = 1500
 
@@ -146,6 +147,7 @@ export default function ExportPage() {
                       birthDate={ctx.baby.birthDate}
                     />
                   </div>
+                  <SummaryBoxes summary={summarizeMonth(meals.data ?? [], analysis, month)} />
                 </>
               )}
             </PaperSheet>
@@ -240,6 +242,31 @@ function SheetHeader({ month, babyName, children }: { month: string; babyName: s
         </div>
       </div>
       <div className="w-[560px] pt-2">{children}</div>
+    </div>
+  )
+}
+
+/** 달력 아래: 이 달에 새로 먹어본 재료 · 좋아한 재료 · 싫어한 재료 */
+function SummaryBoxes({ summary }: { summary: ReturnType<typeof summarizeMonth> }) {
+  const boxes = [
+    { title: '새로 먹어본 재료', Icon: Sprout, names: summary.newNames, bg: '#f3e6dc', accent: '#b98f7c' },
+    { title: '좋아한 재료', Icon: Heart, names: summary.liked, bg: '#e6ebdf', accent: '#7f9270' },
+    { title: '싫어한 재료', Icon: HeartCrack, names: summary.disliked, bg: '#ece5da', accent: '#8a776b' },
+  ]
+  return (
+    <div className="mt-10 grid grid-cols-3 gap-6">
+      {boxes.map((b) => (
+        <div key={b.title} className="rounded-[28px] px-7 pt-5 pb-6" style={{ backgroundColor: b.bg }}>
+          <p className="flex items-center gap-2 text-[22px] font-bold" style={{ color: b.accent }}>
+            <b.Icon size={24} strokeWidth={1.8} />
+            {b.title}
+            <span className="date-serif ml-auto text-[24px] font-normal">{b.names.length || ''}</span>
+          </p>
+          <p className="pen mt-3 text-[30px] leading-[1.25] break-keep">
+            {b.names.length ? b.names.join(', ') : <span className="text-ink-faint">—</span>}
+          </p>
+        </div>
+      ))}
     </div>
   )
 }

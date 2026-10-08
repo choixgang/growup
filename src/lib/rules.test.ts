@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { analyzeIngredients, checkDraft, dPlus } from './rules'
+import { analyzeIngredients, checkDraft, dPlus, summarizeMonth } from './rules'
 import type { Meal } from './types'
 
 let n = 0
@@ -95,5 +95,25 @@ describe('dPlus', () => {
   it('태어난 날이 D+1', () => {
     expect(dPlus('2026-05-01', '2026-05-01')).toBe(1)
     expect(dPlus('2026-05-01', '2026-05-10')).toBe(10)
+  })
+})
+
+describe('summarizeMonth', () => {
+  const logged = (m: Meal, log: Partial<NonNullable<Meal['log']>>): Meal => ({
+    ...m,
+    log: { eatenAmount: '', reaction: 'none', reactionNote: '', preference: null, photoUrl: null, loggedAt: '', ...log },
+  })
+
+  it('이 달의 새 재료와 재료별 마지막 반응을 모은다', () => {
+    const meals = [
+      meal('2026-09-30', ['쌀']),
+      logged(meal('2026-10-01', ['쌀', '감자']), { itemReactions: { 감자: 'dislike' } }),
+      logged(meal('2026-10-05', ['감자', '애호박']), { itemReactions: { 감자: 'like', 애호박: 'dislike' } }),
+      logged(meal('2026-10-07', ['당근']), { preference: 'like' }), // 예전 기록: 끼니 전체 선호도
+    ]
+    const s = summarizeMonth(meals, analyzeIngredients(meals, 3), '2026-10')
+    expect(s.newNames).toEqual(['감자', '애호박', '당근'])
+    expect(s.liked).toEqual(['감자', '당근'])
+    expect(s.disliked).toEqual(['애호박'])
   })
 })

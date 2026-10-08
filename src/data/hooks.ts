@@ -67,7 +67,7 @@ export function useMonthNote(babyId: string, month: string) {
   return useQuery({
     queryKey: ['monthNote', babyId, month],
     queryFn: async (): Promise<MonthNote> =>
-      (await repo.getMonthNote(babyId, month)) ?? { babyId, month, stage: 'early', caution: '', goal: '' },
+      (await repo.getMonthNote(babyId, month)) ?? { babyId, month, stage: 'early', memo: '' },
   })
 }
 

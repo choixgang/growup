@@ -113,6 +113,40 @@ export function analyzeIngredients(
   return { tests, byKey, cautionKeys, newByDate, warnings }
 }
 
+export interface MonthSummary {
+  /** 이 달에 처음 먹어본(또는 처음 계획한) 재료 */
+  newNames: string[]
+  liked: string[]
+  disliked: string[]
+}
+
+/**
+ * 이미지 하단 요약용. 좋아함·싫어함은 이 달 기록에서 재료별 마지막 반응을 쓴다.
+ * 재료별 반응이 없는 예전 기록은 끼니 전체 선호도를 그 끼니 재료 모두에 적용한다.
+ */
+export function summarizeMonth(meals: Meal[], analysis: IngredientAnalysis, month: string): MonthSummary {
+  const newNames = analysis.tests.filter((t) => t.start.startsWith(month)).map((t) => t.name)
+  const last = new Map<string, { name: string; r: 'like' | 'dislike' | null }>()
+  const sorted = meals
+    .filter((m) => m.date.startsWith(month) && m.log)
+    .sort((a, b) => a.date.localeCompare(b.date) || a.slot - b.slot)
+  for (const meal of sorted) {
+    const log = meal.log!
+    for (const item of meal.items) {
+      const key = normalizeName(item.name)
+      if (!key) continue
+      let r: ItemReaction | null = null
+      if (hasItemReactions(meal)) r = log.itemReactions?.[key] ?? null
+      else if (log.preference === 'like') r = 'like'
+      else if (log.preference === 'refuse') r = 'dislike'
+      if (!r) continue
+      last.set(key, { name: last.get(key)?.name ?? item.name.trim(), r: r === 'like' || r === 'dislike' ? r : null })
+    }
+  }
+  const pick = (r: 'like' | 'dislike') => [...last.values()].filter((v) => v.r === r).map((v) => v.name)
+  return { newNames, liked: pick('like'), disliked: pick('dislike') }
+}
+
 /**
  * 아직 저장하지 않은 식단 초안을 검사한다. 초안을 넣었을 때 새로 생기는 간격 경고와,
  * 이전에 이상 반응이 있었던 재료를 메시지로 돌려준다.

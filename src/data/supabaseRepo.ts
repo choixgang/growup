@@ -1,5 +1,5 @@
 import { createClient, type SupabaseClient, type User } from '@supabase/supabase-js'
-import type { FeedingSettings, FeedingStyle, Meal, MealItem, MealLog, MonthNote, Stage, WeekNote, ChecklistItem } from '../lib/types'
+import { legacyMemo, type FeedingSettings, FeedingStyle, Meal, MealItem, MealLog, MonthNote, Stage, WeekNote, ChecklistItem } from '../lib/types'
 import type { Repo, SessionUser, StoredContext } from './repo'
 
 interface MealRow {
@@ -263,7 +263,7 @@ export function createSupabaseRepo(url: string, anonKey: string): Repo {
         await sb.from('month_notes').select('*').eq('baby_id', babyId).eq('month', month).limit(1),
       ) as { baby_id: string; month: string; stage: Stage; caution: string; goal: string }[]
       const r = rows[0]
-      return r ? { babyId: r.baby_id, month: r.month, stage: r.stage, caution: r.caution, goal: r.goal } : null
+      return r ? { babyId: r.baby_id, month: r.month, stage: r.stage, memo: legacyMemo(r.caution, r.goal) } : null
     },
     async saveMonthNote(n: MonthNote) {
       check(
@@ -271,8 +271,9 @@ export function createSupabaseRepo(url: string, anonKey: string): Repo {
           baby_id: n.babyId,
           month: n.month,
           stage: n.stage,
-          caution: n.caution,
-          goal: n.goal,
+          // 메모는 caution 칸에 저장하고, 합쳐 읽은 예전 목표 칸은 비운다
+          caution: n.memo,
+          goal: '',
         }),
       )
     },

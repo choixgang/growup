@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Check } from 'lucide-react'
-import { STAGE_LABEL, type MonthNote, type Stage } from '../lib/types'
+import { MEMO_LINES, STAGE_LABEL, type MonthNote, type Stage } from '../lib/types'
 
 const STAGES: Stage[] = ['early', 'middle', 'late']
 
@@ -10,7 +10,7 @@ interface Props {
   variant: 'app' | 'export'
 }
 
-/** 컨셉 달력 상단: 단계 체크, 주의해야 할 식재료, 이 달의 목표 */
+/** 컨셉 달력 상단: 단계 체크, 이 달의 메모 */
 export default function MonthInfo({ note, onChange, variant }: Props) {
   const isExport = variant === 'export'
   return (
@@ -44,50 +44,39 @@ export default function MonthInfo({ note, onChange, variant }: Props) {
           )
         })}
       </div>
-      <InfoLine
-        label="주의해야 할 식재료"
-        value={note.caution}
-        isExport={isExport}
-        onCommit={(v) => onChange?.({ ...note, caution: v })}
-      />
-      <InfoLine
-        label="이 달의 목표"
-        value={note.goal}
-        isExport={isExport}
-        onCommit={(v) => onChange?.({ ...note, goal: v })}
-      />
+      <MemoLines value={note.memo} isExport={isExport} onCommit={(v) => onChange?.({ ...note, memo: v })} />
     </div>
   )
 }
 
-function InfoLine({
-  label,
-  value,
-  isExport,
-  onCommit,
-}: {
-  label: string
-  value: string
-  isExport: boolean
-  onCommit: (v: string) => void
-}) {
+/** 줄 노트 같은 세 줄 메모. 줄 수를 넘기는 줄바꿈은 받지 않는다 */
+function MemoLines({ value, isExport, onCommit }: { value: string; isExport: boolean; onCommit: (v: string) => void }) {
   const [draft, setDraft] = useState(value)
   useEffect(() => setDraft(value), [value])
+  const lineH = isExport ? 46 : 30
+  const lined: React.CSSProperties = {
+    height: lineH * MEMO_LINES,
+    lineHeight: `${lineH}px`,
+    backgroundImage: 'linear-gradient(transparent calc(100% - 1px), var(--color-line-strong) 1px)',
+    backgroundSize: `100% ${lineH}px`,
+    backgroundAttachment: 'local',
+  }
   return (
-    <label className={`flex items-end border-b border-line-strong ${isExport ? 'gap-4 pb-1' : 'gap-3 pb-0.5'}`}>
-      <span className={`shrink-0 text-ink-soft ${isExport ? 'w-[200px] text-[19px]' : 'w-[104px] text-[12px]'}`}>
-        {label}
-      </span>
+    <label className="flex flex-col">
+      <span className={`text-ink-soft ${isExport ? 'text-[19px]' : 'text-[12px]'}`}>메모</span>
       {isExport ? (
-        <span className="pen min-h-[34px] flex-1 text-[32px] leading-none">{value}</span>
+        <p className="pen overflow-hidden text-[32px] whitespace-pre-wrap" style={lined}>
+          {value}
+        </p>
       ) : (
-        <input
-          className="pen min-w-0 flex-1 bg-transparent text-[19px]"
+        <textarea
+          className="pen w-full resize-none overflow-y-auto bg-transparent text-[19px] outline-none"
+          style={lined}
+          rows={MEMO_LINES}
           value={draft}
-          placeholder="…"
-          onChange={(e) => setDraft(e.target.value)}
-          onBlur={() => draft !== value && onCommit(draft.trim())}
-          onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
+          placeholder="주의할 재료, 이 달의 목표…"
+          onChange={(e) => setDraft(e.target.value.split('\n').slice(0, MEMO_LINES).join('\n'))}
+          onBlur={() => draft.trim() !== value && onCommit(draft.trim())}
         />
       )}
     </label>

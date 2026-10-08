@@ -1,4 +1,4 @@
-import type { Baby, Household, Meal, MonthNote, WeekNote } from '../lib/types'
+import { legacyMemo, type Baby, type Household, type Meal, type MonthNote, type WeekNote } from '../lib/types'
 import type { Repo, SessionUser, StoredContext } from './repo'
 
 const KEY = 'growup-local-v1'
@@ -183,7 +183,11 @@ export function createLocalRepo(): Repo {
     },
 
     async getMonthNote(babyId, month) {
-      return load().monthNotes.find((n) => n.babyId === babyId && n.month === month) ?? null
+      const n = load().monthNotes.find((n) => n.babyId === babyId && n.month === month) as
+        | (MonthNote & { caution?: string; goal?: string })
+        | undefined
+      if (!n) return null
+      return { babyId: n.babyId, month: n.month, stage: n.stage, memo: n.memo ?? legacyMemo(n.caution, n.goal) }
     },
     async saveMonthNote(note) {
       const db = load()

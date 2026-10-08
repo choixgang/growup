@@ -4,6 +4,7 @@ import { ko } from 'date-fns/locale'
 import { AlertTriangle, Camera, Plus, Trash2, X } from 'lucide-react'
 import { repo } from '../data'
 import { checkDraft, normalizeName } from '../lib/rules'
+import { pairingNotes, pairingSuggestions } from '../lib/pairings'
 import { preparePhoto } from '../lib/image'
 import { circled } from '../lib/dates'
 import { emptyLog, ITEM_REACTIONS, type FeedingStyle, type ItemReaction, type Meal, type MealItem, type MealLog } from '../lib/types'
@@ -47,6 +48,13 @@ export default function MealSheet(props: Props) {
         props.knownIngredients,
       ),
     [props.allMeals, meal?.id, date, slot, JSON.stringify(cleanItems), props.intervalDays, props.knownIngredients],
+  )
+
+  const itemNames = cleanItems.map((i) => i.name)
+  const pairs = useMemo(() => pairingNotes(itemNames), [itemNames.join('|')])
+  const suggestions = useMemo(
+    () => pairingSuggestions(itemNames, props.ingredientNames),
+    [itemNames.join('|'), props.ingredientNames],
   )
 
   // 예전 기록(끼니 전체 반응)은 재료별 반응을 하나도 안 골랐을 때만 그 값을 유지한다
@@ -238,6 +246,38 @@ export default function MealSheet(props: Props) {
               </p>
             ))}
             <p className="mt-1 text-[11px] text-ink-soft">저장은 그대로 할 수 있어요.</p>
+          </div>
+        )}
+
+        {(pairs.length > 0 || suggestions.length > 0) && (
+          <div className="mt-3 rounded-xl bg-sage/10 px-3 py-2">
+            {pairs.map((p) => (
+              <p key={p.reason} className="text-[13px] leading-snug">
+                <span className={p.kind === 'good' ? 'text-sage' : 'text-warn'}>
+                  {p.kind === 'good' ? '💡 ' : '⚖️ '}
+                  {p.a} + {p.b}
+                </span>
+                <span className="text-ink-soft"> · {p.reason}</span>
+              </p>
+            ))}
+            {suggestions.map((s) => (
+              <p key={s.for} className="mt-0.5 text-[12px] text-ink-soft">
+                {s.for}와(과) 어울리는 먹어본 재료:{' '}
+                {s.names.map((n, i) => (
+                  <button
+                    key={n}
+                    className="text-sage underline decoration-dotted underline-offset-2"
+                    onClick={() =>
+                      setItems((prev) => [...prev.filter((it) => it.name.trim()), { name: n, grams: null }])
+                    }
+                  >
+                    {n}
+                    {i < s.names.length - 1 ? ', ' : ''}
+                  </button>
+                ))}
+              </p>
+            ))}
+            <p className="mt-1 text-[11px] text-ink-faint">재료 궁합은 참고용이에요{suggestions.length ? ' · 이름을 누르면 재료에 추가돼요' : ''}</p>
           </div>
         )}
 

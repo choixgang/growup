@@ -6,11 +6,20 @@ import { repo } from './index'
 import type { AppContext, SessionUser } from './repo'
 
 export function useUser() {
+  const qc = useQueryClient()
   const [user, setUser] = useState<SessionUser | null | undefined>(undefined)
   useEffect(() => {
-    repo.getUser().then(setUser)
-    return repo.onAuthChange(setUser)
-  }, [])
+    let lastId: string | null | undefined
+    const apply = (u: SessionUser | null) => {
+      const id = u?.id ?? null
+      // 로그아웃하거나 다른 계정으로 바뀌면 이전 계정의 다이어리·식단 캐시를 지운다
+      if (lastId !== undefined && id !== lastId) qc.clear()
+      lastId = id
+      setUser(u)
+    }
+    repo.getUser().then(apply)
+    return repo.onAuthChange(apply)
+  }, [qc])
   return user
 }
 

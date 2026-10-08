@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { addDays, format, parseISO } from 'date-fns'
-import { AlertTriangle, ChevronLeft, ChevronRight, Copy, Plus, X } from 'lucide-react'
+import { AlertTriangle, ChevronLeft, ChevronRight, Copy, Plus, Trash2, X } from 'lucide-react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useCtx } from '../App'
 import CopyMealSheet from '../components/CopyMealSheet'
@@ -35,12 +35,25 @@ export default function WeekPage() {
   const deleteMeal = useDeleteMeal(ctx.baby.id)
   const [editing, setEditing] = useState<{ date: string; slot: number; meal: Meal | null } | null>(null)
   const [copying, setCopying] = useState<Meal | null>(null)
-  const [toast, setToast] = useState<string | null>(null)
+  const [openRow, setOpenRow] = useState<string | null>(null)
+  const [toast, setToast] = useState<{ text: string; undo?: Meal } | null>(null)
   useEffect(() => {
     if (!toast) return
-    const t = setTimeout(() => setToast(null), 2500)
+    const t = setTimeout(() => setToast(null), toast.undo ? 5000 : 2500)
     return () => clearTimeout(t)
   }, [toast])
+
+  function removeMeal(m: Meal) {
+    setOpenRow(null)
+    deleteMeal.mutate(m.id)
+    setToast({ text: '끼니를 삭제했어요', undo: m })
+  }
+
+  function undoDelete(m: Meal) {
+    setToast(null)
+    const { updatedAt: _, ...rest } = m
+    saveMeal.mutate(rest)
+  }
 
   async function copyMeal(src: Meal, date: string) {
     const slot = (meals.data ?? []).filter((m) => m.date === date).reduce((n, m) => Math.max(n, m.slot), 0) + 1
@@ -54,7 +67,7 @@ export default function WeekPage() {
       items: src.items.map((i) => ({ ...i })),
       log: null,
     })
-    setToast(`${format(parseISO(date), 'M월 d일')}에 복사했어요`)
+    setToast({ text: `${format(parseISO(date), 'M월 d일')}에 복사했어요` })
   }
 
   const ingredientNames = useMemo(
@@ -123,8 +136,14 @@ export default function WeekPage() {
                     meal={m}
                     multi={dayMeals.length > 1}
                     analysis={analysis}
-                    onClick={() => setEditing({ date, slot: m.slot, meal: m })}
-                    onCopy={() => setCopying(m)}
+                    open={openRow === m.id}
+                    onOpenChange={(o) => setOpenRow(o ? m.id : null)}
+                    onClick={() => (openRow ? setOpenRow(null) : setEditing({ date, slot: m.slot, meal: m }))}
+                    onCopy={() => {
+                      setOpenRow(null)
+                      setCopying(m)
+                    }}
+                    onDelete={() => removeMeal(m)}
                   />
                 ))}
                 <button
@@ -147,7 +166,14 @@ export default function WeekPage() {
 
       {toast && (
         <div className="pointer-events-none fixed inset-x-0 bottom-[96px] z-40 flex justify-center">
-          <p className="rounded-full bg-ink/85 px-4 py-2 text-[13px] text-paper shadow-lg">{toast}</p>
+          <p className="pointer-events-auto flex items-center gap-3 rounded-full bg-ink/85 px-4 py-2 text-[13px] text-paper shadow-lg">
+            {toast.text}
+            {toast.undo && (
+              <button className="font-bold text-rose" onClick={() => undoDelete(toast.undo!)}>
+                되돌리기
+              </button>
+            )}
+          </p>
         </div>
       )}
 
@@ -175,32 +201,48 @@ function MealRow({
   meal,
   multi,
   analysis,
+  open,
+  onOpenChange,
   onClick,
   onCopy,
+  onDelete,
 }: {
   meal: Meal
   multi: boolean
   analysis: IngredientAnalysis
+  open: boolean
+  onOpenChange: (open: boolean) => void
   onClick: () => void
   onCopy: () => void
+  onDelete: () => void
 }) {
-  const gesture = useCopyGesture(onCopy)
+  const gesture = useRowGesture(open, onOpenChange, onCopy)
   const newKeys = new Set(analysis.newByDate.get(meal.date) ?? [])
   const log = meal.log
   const porridge = meal.style === 'porridge'
   const hasItemReactions = Object.keys(log?.itemReactions ?? {}).length > 0
   return (
     <div className="relative overflow-hidden border-b border-dashed border-line last:border-0">
-      <span
-        className="absolute inset-y-0 right-1 flex items-center gap-1 text-[12px] text-rose-deep"
-        style={{ opacity: Math.min(1, -gesture.dx / 60) }}
-      >
-        <Copy size={14} /> 복사
-      </span>
+      {gesture.dx < 0 && (
+        <div className="absolute inset-y-0 right-0 flex" style={{ width: ACTIONS_W }}>
+          <button
+            className="flex flex-1 flex-col items-center justify-center gap-0.5 bg-rose-soft text-[11px] text-ink"
+            onClick={onCopy}
+          >
+            <Copy size={15} strokeWidth={1.6} /> 복사
+          </button>
+          <button
+            className="flex flex-1 flex-col items-center justify-center gap-0.5 rounded-r-md bg-alert text-[11px] text-paper"
+            onClick={onDelete}
+          >
+            <Trash2 size={15} strokeWidth={1.6} /> 삭제
+          </button>
+        </div>
+      )}
       <button
         {...gesture.handlers}
         onClick={() => !gesture.consumeClick() && onClick()}
-        className={`block w-full py-1 text-left select-none [-webkit-touch-callout:none] ${gesture.dx ? 'bg-paper' : ''} ${
+        className={`relative block w-full py-1 text-left select-none [-webkit-touch-callout:none] ${gesture.dx ? 'bg-paper' : ''} ${
           gesture.dragging ? '' : 'transition-transform'
         }`}
         style={{ transform: `translateX(${gesture.dx}px)`, touchAction: 'pan-y' }}
@@ -269,29 +311,32 @@ function MealRow({
   )
 }
 
+const ACTIONS_W = 128
+
 /**
- * 끼니 줄을 왼쪽으로 밀거나 꾹 누르면 복사 창을 연다.
+ * 끼니 줄 제스처. 꾹 누르면 복사 창, 왼쪽으로 밀면 복사·삭제 버튼이 열린다.
  * 세로로 움직이면 스크롤로 보고 아무것도 하지 않는다.
  */
-function useCopyGesture(onTrigger: () => void) {
-  const [dx, setDx] = useState(0)
-  const [dragging, setDragging] = useState(false)
+function useRowGesture(open: boolean, onOpenChange: (open: boolean) => void, onLongPress: () => void) {
+  const [drag, setDrag] = useState<number | null>(null) // 끌고 있는 동안의 위치
   const g = useRef<{ x: number; y: number; timer: number | null; mode: 'idle' | 'swipe' | 'scroll' } | null>(null)
   const fired = useRef(false)
+  const base = open ? -ACTIONS_W : 0
+  const dx = drag ?? base
 
   const clearTimer = () => {
     if (g.current?.timer) clearTimeout(g.current.timer)
     if (g.current) g.current.timer = null
   }
-  const fire = () => {
-    fired.current = true
-    navigator.vibrate?.(12)
-    onTrigger()
+  const reset = () => {
+    clearTimer()
+    g.current = null
+    setDrag(null)
   }
 
   return {
     dx,
-    dragging,
+    dragging: drag !== null,
     /** 제스처 뒤에 따라오는 click 은 끼니 편집으로 넘기지 않는다 */
     consumeClick: () => {
       const f = fired.current
@@ -301,7 +346,14 @@ function useCopyGesture(onTrigger: () => void) {
     handlers: {
       onPointerDown: (e: React.PointerEvent) => {
         fired.current = false
-        g.current = { x: e.clientX, y: e.clientY, mode: 'idle', timer: window.setTimeout(fire, 500) }
+        const timer = open
+          ? null
+          : window.setTimeout(() => {
+              fired.current = true
+              navigator.vibrate?.(12)
+              onLongPress()
+            }, 500)
+        g.current = { x: e.clientX, y: e.clientY, mode: 'idle', timer }
       },
       onPointerMove: (e: React.PointerEvent) => {
         const s = g.current
@@ -309,33 +361,24 @@ function useCopyGesture(onTrigger: () => void) {
         const mx = e.clientX - s.x
         const my = e.clientY - s.y
         if (s.mode === 'idle') {
-          if (Math.abs(my) > 8) {
+          if (Math.abs(my) > 8 && Math.abs(my) > Math.abs(mx)) {
             s.mode = 'scroll'
             clearTimer()
-          } else if (mx < -8) {
+          } else if (mx < -8 || (open && mx > 8)) {
             s.mode = 'swipe'
             clearTimer()
-            setDragging(true)
           } else if (Math.abs(mx) > 8) clearTimer()
         }
-        if (s.mode === 'swipe') setDx(Math.max(-90, Math.min(0, mx)))
+        if (s.mode === 'swipe') setDrag(Math.max(-ACTIONS_W - 20, Math.min(0, base + mx)))
       },
       onPointerUp: () => {
-        clearTimer()
         if (g.current?.mode === 'swipe') {
           fired.current = true // 밀기만 하고 놓아도 편집이 열리지 않게
-          if (dx < -60) fire()
+          onOpenChange(dx < -ACTIONS_W / 2)
         }
-        g.current = null
-        setDragging(false)
-        setDx(0)
+        reset()
       },
-      onPointerCancel: () => {
-        clearTimer()
-        g.current = null
-        setDragging(false)
-        setDx(0)
-      },
+      onPointerCancel: reset,
       onContextMenu: (e: React.MouseEvent) => e.preventDefault(),
     },
   }

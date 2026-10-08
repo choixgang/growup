@@ -152,7 +152,7 @@ interface DayEntry {
   reaction: ItemReaction | null
 }
 
-/** 칸에 보여줄 재료: 새 재료, 반응을 고른 재료, 이상 반응이 있었던 재료. 눈여겨볼 순서로 */
+/** 그날 먹은(먹일) 재료 전부, 끼니 순서대로. 같은 재료는 한 번만 */
 function dayEntries(meals: Meal[], newKeys: string[], analysis: IngredientAnalysis): DayEntry[] {
   const byKey = new Map<string, DayEntry>()
   for (const m of meals) {
@@ -169,16 +169,14 @@ function dayEntries(meals: Meal[], newKeys: string[], analysis: IngredientAnalys
       })
     }
   }
-  const rank = (e: DayEntry) =>
-    e.reaction === 'issue' ? 0 : e.isNew ? 1 : e.caution ? 2 : e.reaction === 'dislike' ? 3 : e.reaction === 'like' ? 4 : 5
-  return [...byKey.values()].filter((e) => e.isNew || e.caution || e.reaction).sort((a, b) => rank(a) - rank(b))
+  return [...byKey.values()]
 }
 
 function AppCellBody({ meals, entries }: { meals: Meal[]; entries: DayEntry[] }) {
   if (!meals.length) return null
   return (
     <div className="mt-0.5 flex min-w-0 flex-col gap-[1px]">
-      {entries.slice(0, 2).map((e) => (
+      {entries.map((e) => (
         <span key={e.key} className="flex min-w-0 items-center">
           <span
             className={`pen truncate text-[14px] leading-[1.05] ${
@@ -191,7 +189,6 @@ function AppCellBody({ meals, entries }: { meals: Meal[]; entries: DayEntry[] })
           {e.reaction && <ReactionEmoji reaction={e.reaction} className="shrink-0 text-[8.5px] leading-none" />}
         </span>
       ))}
-      {entries.length > 2 && <span className="pen text-[11px] leading-none text-ink-soft">+{entries.length - 2}</span>}
       <div className="mt-[2px] flex gap-[3px] pl-[1px]">
         {meals.map((m) => (
           <span

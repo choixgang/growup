@@ -6,6 +6,7 @@ import { repo } from '../data'
 import { checkDraft, normalizeName } from '../lib/rules'
 import { pairingNotes, pairingSuggestions } from '../lib/pairings'
 import ReactionEmoji from './ReactionEmoji'
+import { ingredientsFromTitle } from '../lib/ingredients'
 import { preparePhoto } from '../lib/image'
 import { circled } from '../lib/dates'
 import { emptyLog, ITEM_REACTIONS, type FeedingStyle, type ItemReaction, type Meal, type MealItem, type MealLog } from '../lib/types'
@@ -31,6 +32,16 @@ export default function MealSheet(props: Props) {
   const [title, setTitle] = useState(meal?.title ?? '')
   const [totalMl, setTotalMl] = useState<number | null>(meal?.totalMl ?? null)
   const porridge = style === 'porridge'
+  // 죽 이름을 다 적고 나면 이름에서 찾은 재료를 추가할지 물어본다
+  const [titleHint, setTitleHint] = useState<string[]>([])
+  function checkTitle() {
+    const have = new Set(items.map((i) => normalizeName(i.name)))
+    setTitleHint(ingredientsFromTitle(title, props.ingredientNames).filter((n) => !have.has(normalizeName(n))))
+  }
+  function addFromTitle() {
+    setItems((prev) => [...prev.filter((it) => it.name.trim()), ...titleHint.map((name) => ({ name, grams: null }))])
+    setTitleHint([])
+  }
   const [items, setItems] = useState<MealItem[]>(meal?.items.length ? meal.items : [{ name: '', grams: null }])
   const [log, setLog] = useState<MealLog | null>(meal?.log ?? null)
   const [saving, setSaving] = useState(false)
@@ -174,6 +185,7 @@ export default function MealSheet(props: Props) {
               placeholder="죽 이름 (예: 소고기양배추죽)"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
+              onBlur={checkTitle}
             />
             <div className="flex w-[96px] shrink-0 items-end">
               <input
@@ -187,6 +199,22 @@ export default function MealSheet(props: Props) {
                 }}
               />
               <span className="pen shrink-0 pb-1 pl-0.5 text-[20px] text-ink-soft">ml</span>
+            </div>
+          </div>
+        )}
+        {porridge && titleHint.length > 0 && (
+          <div className="mt-2 rounded-xl bg-rose-soft px-3 py-2">
+            <p className="text-[13px]">
+              이름에서 찾은 재료 <span className="pen text-[19px]">{titleHint.join(', ')}</span>
+            </p>
+            <p className="text-[12px] text-ink-soft">재료에 자동으로 추가할까요?</p>
+            <div className="mt-1.5 flex gap-2">
+              <button className="btn btn-primary flex-1 py-1.5 text-[13px]" onClick={addFromTitle}>
+                추가할게요
+              </button>
+              <button className="btn btn-ghost flex-1 py-1.5 text-[13px]" onClick={() => setTitleHint([])}>
+                괜찮아요
+              </button>
             </div>
           </div>
         )}

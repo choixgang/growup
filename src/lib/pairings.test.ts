@@ -28,3 +28,12 @@ describe('pairingSuggestions', () => {
     expect(s).toEqual([{ for: '소고기', names: ['양배추', '애호박'] }])
   })
 })
+
+describe('ingredientsFromTitle', () => {
+  it('죽 이름에서 재료를 긴 이름부터 찾는다', async () => {
+    const { ingredientsFromTitle } = await import('./ingredients')
+    expect(ingredientsFromTitle('양배추당근감자소고기죽')).toEqual(['양배추', '당근', '감자', '소고기'])
+    expect(ingredientsFromTitle('소고기 무 미음')).toEqual(['소고기', '무'])
+    expect(ingredientsFromTitle('닭안심단호박죽', ['닭안심'])).toEqual(['닭안심', '단호박'])
+  })
+})

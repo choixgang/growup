@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft, KeyRound, Sprout } from 'lucide-react'
+import { ArrowLeft, KeyRound, Plus, Sprout, X } from 'lucide-react'
 import { repo } from '../data'
 import type { FeedingStyle } from '../lib/types'
 import StylePicker from '../components/StylePicker'
@@ -11,8 +11,10 @@ export default function OnboardingPage() {
   const qc = useQueryClient()
   // 로컬 모드는 참여할 다이어리가 없으니 바로 아기 등록으로
   const [step, setStep] = useState<Step>(repo.kind === 'supabase' ? 'choose' : 'create')
-  const [name, setName] = useState('')
-  const [birth, setBirth] = useState('')
+  // 쌍둥이·형제는 처음부터 함께 등록할 수 있다
+  const [babies, setBabies] = useState([{ name: '', birth: '' }])
+  const updateBaby = (i: number, patch: Partial<{ name: string; birth: string }>) =>
+    setBabies((prev) => prev.map((b, idx) => (idx === i ? { ...b, ...patch } : b)))
   const [style, setStyle] = useState<FeedingStyle>('topping')
   const [code, setCode] = useState('')
   const [busy, setBusy] = useState(false)
@@ -23,8 +25,11 @@ export default function OnboardingPage() {
     setBusy(true)
     setError(null)
     try {
-      if (step === 'create') await repo.createHousehold(name.trim(), birth, style)
-      else await repo.joinHousehold(code)
+      if (step === 'create') {
+        const [first, ...rest] = babies
+        const hid = await repo.createHousehold(first.name.trim(), first.birth, style)
+        for (const b of rest) await repo.addBaby(hid, b.name.trim(), b.birth, { feedingStyle: style })
+      } else await repo.joinHousehold(code)
       await qc.invalidateQueries({ queryKey: ['context'] })
     } catch (err) {
       setError((err as Error).message)
@@ -81,22 +86,53 @@ export default function OnboardingPage() {
                     배우자가 이미 다이어리를 만들었다면 새로 만들지 말고 <b>초대 코드로 참여</b>해 주세요. 그래야 기록을 함께 봐요.
                   </p>
                 )}
-                <label className="flex flex-col gap-1">
-                  <span className="text-[12px] text-ink-soft">아기 이름 (태명도 좋아요)</span>
-                  <input className="field pen text-2xl" required value={name} onChange={(e) => setName(e.target.value)} />
-                </label>
-                <label className="flex flex-col gap-1">
-                  <span className="text-[12px] text-ink-soft">태어난 날 · D+일수 계산에 써요</span>
-                  <input
-                    className="field pen text-2xl"
-                    type="date"
-                    required
-                    value={birth}
-                    onChange={(e) => setBirth(e.target.value)}
-                  />
-                </label>
+                {babies.map((b, i) => (
+                  <div key={i} className={`flex flex-col gap-5 ${i ? 'border-t border-dashed border-line pt-4' : ''}`}>
+                    {babies.length > 1 && (
+                      <div className="-mb-3 flex items-center justify-between">
+                        <span className="title-serif text-[17px] italic">Baby {i + 1}</span>
+                        {i > 0 && (
+                          <button
+                            type="button"
+                            aria-label="이 아이 빼기"
+                            className="p-1 text-ink-faint"
+                            onClick={() => setBabies((prev) => prev.filter((_, idx) => idx !== i))}
+                          >
+                            <X size={16} />
+                          </button>
+                        )}
+                      </div>
+                    )}
+                    <label className="flex flex-col gap-1">
+                      <span className="text-[12px] text-ink-soft">아기 이름 (태명도 좋아요)</span>
+                      <input
+                        className="field pen text-2xl"
+                        required
+                        value={b.name}
+                        onChange={(e) => updateBaby(i, { name: e.target.value })}
+                      />
+                    </label>
+                    <label className="flex flex-col gap-1">
+                      <span className="text-[12px] text-ink-soft">태어난 날 · D+일수 계산에 써요</span>
+                      <input
+                        className="field pen text-2xl"
+                        type="date"
+                        required
+                        value={b.birth}
+                        onChange={(e) => updateBaby(i, { birth: e.target.value })}
+                      />
+                    </label>
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  className="-mt-2 flex w-fit items-center gap-1 text-[13px] text-rose-deep"
+                  onClick={() => setBabies((prev) => [...prev, { name: '', birth: prev[0].birth }])}
+                >
+                  <Plus size={15} /> 쌍둥이·형제 함께 등록
+                </button>
                 <div className="flex flex-col gap-1">
-                  <span className="text-[12px] text-ink-soft">이유식 방식 · 나중에 설정에서 바꿀 수 있어요</span>
+                  <span className="text-[12px] text-ink-soft">이유식 방식 · 나중에 설정에서 아이별로 바꿀 수 있어요</span>
                   <StylePicker value={style} onChange={setStyle} />
                 </div>
               </>

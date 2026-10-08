@@ -6,7 +6,14 @@ export const STAGE_LABEL: Record<Stage, string> = {
   late: '후기',
 }
 
-export interface Baby {
+/** 아이별 이유식 설정 */
+export interface FeedingSettings {
+  feedingStyle: FeedingStyle // 새 끼니를 적을 때 먼저 보여줄 방식
+  testIntervalDays: number
+  knownIngredients: string[] // 앱을 쓰기 전에 이미 먹어본 재료 (새 재료로 보지 않음)
+}
+
+export interface Baby extends FeedingSettings {
   id: string
   householdId: string
   name: string
@@ -20,12 +27,10 @@ export const FEEDING_STYLE_LABEL: Record<FeedingStyle, string> = {
   porridge: '죽',
 }
 
-export interface Household {
+export interface Household extends FeedingSettings {
   id: string
   inviteCode: string
-  testIntervalDays: number
-  knownIngredients: string[] // 앱을 쓰기 전에 이미 먹어본 재료 (새 재료로 보지 않음)
-  feedingStyle: FeedingStyle // 새 끼니를 적을 때 먼저 보여줄 방식
+  // 이유식 설정은 아이별(Baby)로 쓴다. 여기 값은 아이에게 설정이 없을 때의 기본값
 }
 
 export interface MealItem {

@@ -72,8 +72,8 @@ export default function WeekPage() {
   }
 
   const ingredientNames = useMemo(
-    () => [...new Set([...ctx.household.knownIngredients, ...analysis.tests.map((t) => t.name)])],
-    [analysis, ctx.household.knownIngredients],
+    () => [...new Set([...ctx.baby.knownIngredients, ...analysis.tests.map((t) => t.name)])],
+    [analysis, ctx.baby.knownIngredients],
   )
 
   const dayRefs = useRef<Record<string, HTMLDivElement | null>>({})
@@ -190,10 +190,10 @@ export default function WeekPage() {
           slot={editing.slot}
           meal={editing.meal}
           allMeals={meals.data ?? []}
-          intervalDays={ctx.household.testIntervalDays}
-          knownIngredients={ctx.household.knownIngredients}
+          intervalDays={ctx.baby.testIntervalDays}
+          knownIngredients={ctx.baby.knownIngredients}
           ingredientNames={ingredientNames}
-          defaultStyle={ctx.household.feedingStyle}
+          defaultStyle={ctx.baby.feedingStyle}
           onSave={(m) => saveMeal.mutateAsync(m)}
           onDelete={(id) => deleteMeal.mutate(id)}
           onClose={() => setEditing(null)}

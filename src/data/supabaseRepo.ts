@@ -1,5 +1,5 @@
 import { createClient, type SupabaseClient, type User } from '@supabase/supabase-js'
-import type { FeedingStyle, Meal, MealItem, MealLog, MonthNote, Stage, WeekNote, ChecklistItem } from '../lib/types'
+import type { FeedingSettings, FeedingStyle, Meal, MealItem, MealLog, MonthNote, Stage, WeekNote, ChecklistItem } from '../lib/types'
 import type { Repo, SessionUser, StoredContext } from './repo'
 
 interface MealRow {
@@ -52,6 +52,14 @@ function translateError(msg: string): string {
     return '메일을 보낼 수 있는 횟수를 넘었어요. 1시간쯤 뒤에 다시 시도해 주세요'
   if (msg.includes('rate limit')) return '잠시 후 다시 시도해 주세요 (요청이 너무 많아요)'
   return msg
+}
+
+function settingsRow(s: Partial<FeedingSettings>): Record<string, unknown> {
+  const row: Record<string, unknown> = {}
+  if (s.feedingStyle !== undefined) row.feeding_style = s.feedingStyle
+  if (s.testIntervalDays !== undefined) row.test_interval_days = s.testIntervalDays
+  if (s.knownIngredients !== undefined) row.known_ingredients = s.knownIngredients
+  return row
 }
 
 export function createSupabaseRepo(url: string, anonKey: string): Repo {
@@ -128,22 +136,41 @@ export function createSupabaseRepo(url: string, anonKey: string): Repo {
       }
       const babies = check(
         await sb.from('babies').select('*').eq('household_id', hid).order('created_at'),
-      ) as { id: string; household_id: string; name: string; birth_date: string }[]
+      ) as {
+        id: string
+        household_id: string
+        name: string
+        birth_date: string
+        feeding_style?: FeedingStyle | null
+        test_interval_days?: number | null
+        known_ingredients?: string[] | null
+      }[]
       if (!babies.length) return null
+      const household = {
+        id: h.id,
+        inviteCode: h.invite_code,
+        testIntervalDays: h.test_interval_days,
+        knownIngredients: h.known_ingredients ?? [],
+        feedingStyle: h.feeding_style ?? 'topping',
+      }
       return {
-        household: {
-          id: h.id,
-          inviteCode: h.invite_code,
-          testIntervalDays: h.test_interval_days,
-          knownIngredients: h.known_ingredients ?? [],
-          feedingStyle: h.feeding_style ?? 'topping',
-        },
-        babies: babies.map((b) => ({ id: b.id, householdId: b.household_id, name: b.name, birthDate: b.birth_date })),
+        household,
+        // 아이별 설정이 비어 있으면 다이어리 기본값을 쓴다 (아이별 설정 전에 만든 다이어리)
+        babies: babies.map((b) => ({
+          id: b.id,
+          householdId: b.household_id,
+          name: b.name,
+          birthDate: b.birth_date,
+          feedingStyle: b.feeding_style ?? household.feedingStyle,
+          testIntervalDays: b.test_interval_days ?? household.testIntervalDays,
+          knownIngredients: b.known_ingredients ?? household.knownIngredients,
+        })),
       }
     },
     async createHousehold(babyName, birthDate, feedingStyle) {
       const hid = check(await sb.rpc('create_household', { baby_name: babyName, baby_birth_date: birthDate })) as string
       if (feedingStyle !== 'topping') check(await sb.from('households').update({ feeding_style: feedingStyle }).eq('id', hid))
+      return hid
     },
     async joinHousehold(inviteCode) {
       check(await sb.rpc('join_household', { code: inviteCode }))
@@ -154,10 +181,15 @@ export function createSupabaseRepo(url: string, anonKey: string): Repo {
       return res.count ?? 0
     },
     async updateBaby(babyId, patch) {
-      check(await sb.from('babies').update({ name: patch.name, birth_date: patch.birthDate }).eq('id', babyId))
+      const row: Record<string, unknown> = settingsRow(patch)
+      if (patch.name !== undefined) row.name = patch.name
+      if (patch.birthDate !== undefined) row.birth_date = patch.birthDate
+      check(await sb.from('babies').update(row).eq('id', babyId))
     },
-    async addBaby(householdId, name, birthDate) {
-      check(await sb.from('babies').insert({ household_id: householdId, name, birth_date: birthDate }))
+    async addBaby(householdId, name, birthDate, settings = {}) {
+      check(
+        await sb.from('babies').insert({ household_id: householdId, name, birth_date: birthDate, ...settingsRow(settings) }),
+      )
     },
     async deleteBaby(babyId) {
       check(await sb.from('babies').delete().eq('id', babyId))

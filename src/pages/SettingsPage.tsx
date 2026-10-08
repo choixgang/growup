@@ -6,6 +6,7 @@ import { useCtx } from '../App'
 import { repo } from '../data'
 import { useMeals, useUser } from '../data/hooks'
 import StylePicker from '../components/StylePicker'
+import BabySwitcher from '../components/BabySwitcher'
 import { FEEDING_STYLE_LABEL } from '../lib/types'
 
 type MenuKey = 'baby' | 'feeding' | 'share' | 'account'
@@ -51,7 +52,10 @@ function SettingsMenu() {
     {
       key: 'feeding',
       icon: <CookingPot size={20} strokeWidth={1.5} />,
-      desc: `${FEEDING_STYLE_LABEL[h.feedingStyle]} 이유식 · 새 재료 간격 ${h.testIntervalDays}일 · 먹어본 재료 ${h.knownIngredients.length}개`,
+      desc:
+        ctx.babies.length > 1
+          ? ctx.babies.map((b) => `${b.name} ${FEEDING_STYLE_LABEL[b.feedingStyle]}·${b.testIntervalDays}일`).join(' / ')
+          : `${FEEDING_STYLE_LABEL[ctx.baby.feedingStyle]} 이유식 · 새 재료 간격 ${ctx.baby.testIntervalDays}일 · 먹어본 재료 ${ctx.baby.knownIngredients.length}개`,
     },
     {
       key: 'share',
@@ -127,7 +131,12 @@ function BabySettings() {
               e.preventDefault()
               if (!name.trim() || !birth) return
               run(async () => {
-                await repo.addBaby(ctx.household.id, name.trim(), birth)
+                // 쌍둥이는 보통 같은 식단이라 지금 아이의 이유식 설정을 그대로 가져온다
+                await repo.addBaby(ctx.household.id, name.trim(), birth, {
+                  feedingStyle: ctx.baby.feedingStyle,
+                  testIntervalDays: ctx.baby.testIntervalDays,
+                  knownIngredients: ctx.baby.knownIngredients,
+                })
                 setAdding(false)
                 setName('')
               }, '추가했어요. Monthly·Weekly 위에서 아이를 바꿔 볼 수 있어요')
@@ -164,7 +173,7 @@ function BabySettings() {
         </button>
       )}
       <p className="mt-2 px-1 text-[12px] leading-relaxed text-ink-faint">
-        아이마다 식단과 기록을 따로 적어요. 이유식 설정(방식, 테스트 간격, 먹어본 재료)은 함께 써요.
+        아이마다 식단과 기록을 따로 적어요. 새로 추가한 아이는 지금 아이의 이유식 설정을 그대로 가져오고, 이유식 설정에서 아이별로 바꿀 수 있어요.
       </p>
       {message}
     </>
@@ -223,9 +232,9 @@ function FeedingSettings() {
   const { run, message } = useRun()
   const [known, setKnown] = useState('')
 
-  const interval = ctx.household.testIntervalDays
+  const interval = ctx.baby.testIntervalDays
   const setInterval = (v: number) =>
-    run(() => repo.updateHousehold(ctx.household.id, { testIntervalDays: Math.min(14, Math.max(1, v)) }))
+    run(() => repo.updateBaby(ctx.baby.id, { testIntervalDays: Math.min(14, Math.max(1, v)) }))
 
   const addKnown = () => {
     const items = known
@@ -235,19 +244,25 @@ function FeedingSettings() {
     if (!items.length) return
     setKnown('')
     run(() =>
-      repo.updateHousehold(ctx.household.id, {
-        knownIngredients: [...new Set([...ctx.household.knownIngredients, ...items])],
+      repo.updateBaby(ctx.baby.id, {
+        knownIngredients: [...new Set([...ctx.baby.knownIngredients, ...items])],
       }),
     )
   }
 
   return (
     <>
+      {ctx.babies.length > 1 && (
+        <div className="mt-3 flex items-center gap-2">
+          <BabySwitcher />
+          <span className="text-[12px] text-ink-soft">{ctx.baby.name}의 설정이에요</span>
+        </div>
+      )}
       <Section title="이유식 방식">
         <p className="mb-2 text-[12px] text-ink-soft">새 끼니를 적을 때 이 방식이 먼저 보여요. 끼니마다 바꿀 수도 있어요.</p>
         <StylePicker
-          value={ctx.household.feedingStyle}
-          onChange={(v) => run(() => repo.updateHousehold(ctx.household.id, { feedingStyle: v }))}
+          value={ctx.baby.feedingStyle}
+          onChange={(v) => run(() => repo.updateBaby(ctx.baby.id, { feedingStyle: v }))}
         />
       </Section>
 
@@ -267,7 +282,7 @@ function FeedingSettings() {
       <Section title="이미 먹어본 재료">
         <p className="text-[12px] text-ink-soft">앱을 쓰기 전에 먹여본 재료는 새 재료로 보지 않아요.</p>
         <div className="mt-2 flex flex-wrap gap-1.5">
-          {ctx.household.knownIngredients.map((k) => (
+          {ctx.baby.knownIngredients.map((k) => (
             <span key={k} className="pen flex items-center gap-1 rounded-full bg-rose-soft py-0.5 pr-1.5 pl-3 text-[19px]">
               {k}
               <button
@@ -275,8 +290,8 @@ function FeedingSettings() {
                 className="text-ink-soft"
                 onClick={() =>
                   run(() =>
-                    repo.updateHousehold(ctx.household.id, {
-                      knownIngredients: ctx.household.knownIngredients.filter((x) => x !== k),
+                    repo.updateBaby(ctx.baby.id, {
+                      knownIngredients: ctx.baby.knownIngredients.filter((x) => x !== k),
                     }),
                   )
                 }

@@ -99,7 +99,7 @@ export function useRealtime(ctx: AppContext) {
 
 export function useAnalysis(meals: Meal[] | undefined, ctx: AppContext) {
   return useMemo(
-    () => analyzeIngredients(meals ?? [], ctx.household.testIntervalDays, ctx.household.knownIngredients),
-    [meals, ctx.household.testIntervalDays, ctx.household.knownIngredients],
+    () => analyzeIngredients(meals ?? [], ctx.baby.testIntervalDays, ctx.baby.knownIngredients),
+    [meals, ctx.baby.testIntervalDays, ctx.baby.knownIngredients],
   )
 }

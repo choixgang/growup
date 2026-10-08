@@ -72,13 +72,19 @@ export function createLocalRepo(): Repo {
     async getContext(): Promise<StoredContext | null> {
       const db = load()
       if (!db.household || !db.babies?.length) return null
+      const household: Household = {
+        ...db.household,
+        knownIngredients: db.household.knownIngredients ?? [],
+        feedingStyle: db.household.feedingStyle ?? 'topping',
+      }
       return {
-        household: {
-          ...db.household,
-          knownIngredients: db.household.knownIngredients ?? [],
-          feedingStyle: db.household.feedingStyle ?? 'topping',
-        },
-        babies: db.babies,
+        household,
+        babies: db.babies.map((b) => ({
+          ...b,
+          feedingStyle: b.feedingStyle ?? household.feedingStyle,
+          testIntervalDays: b.testIntervalDays ?? household.testIntervalDays,
+          knownIngredients: b.knownIngredients ?? household.knownIngredients,
+        })),
       }
     },
     async createHousehold(babyName, birthDate, feedingStyle) {
@@ -91,8 +97,9 @@ export function createLocalRepo(): Repo {
         feedingStyle,
       }
       db.household = household
-      db.babies = [{ id: uid(), householdId: household.id, name: babyName, birthDate }]
+      db.babies = [{ id: uid(), householdId: household.id, name: babyName, birthDate, feedingStyle, testIntervalDays: 3, knownIngredients: [] }]
       save(db)
+      return household.id
     },
     async joinHousehold() {
       throw new Error('로컬 모드에서는 가정에 참여할 수 없어요.')
@@ -115,9 +122,19 @@ export function createLocalRepo(): Repo {
       db.babies = (db.babies ?? []).map((b) => (b.id === id ? { ...b, ...patch } : b))
       save(db)
     },
-    async addBaby(householdId, name, birthDate) {
+    async addBaby(householdId, name, birthDate, settings = {}) {
       const db = load()
-      db.babies = [...(db.babies ?? []), { id: uid(), householdId, name, birthDate }]
+      const h = db.household
+      const baby: Baby = {
+        id: uid(),
+        householdId,
+        name,
+        birthDate,
+        feedingStyle: settings.feedingStyle ?? h?.feedingStyle ?? 'topping',
+        testIntervalDays: settings.testIntervalDays ?? h?.testIntervalDays ?? 3,
+        knownIngredients: settings.knownIngredients ?? h?.knownIngredients ?? [],
+      }
+      db.babies = [...(db.babies ?? []), baby]
       save(db)
     },
     async deleteBaby(id) {

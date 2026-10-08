@@ -24,6 +24,10 @@ export function useAppContext(enabled: boolean) {
   return useQuery({ queryKey: ['context'], queryFn: () => repo.getContext(), enabled })
 }
 
+export function useMembers(householdId: string) {
+  return useQuery({ queryKey: ['members', householdId], queryFn: () => repo.listMembers(householdId) })
+}
+
 export function useMeals(babyId: string) {
   return useQuery({ queryKey: ['meals', babyId], queryFn: () => repo.listMeals(babyId) })
 }
@@ -93,6 +97,7 @@ export function useRealtime(ctx: AppContext) {
       if (table === 'month_notes' || table === '*') qc.invalidateQueries({ queryKey: ['monthNote'] })
       if (table === 'week_notes' || table === '*') qc.invalidateQueries({ queryKey: ['weekNote'] })
       if (table === 'context' || table === '*') qc.invalidateQueries({ queryKey: ['context'] })
+      if (table === 'members' || table === '*') qc.invalidateQueries({ queryKey: ['members'] })
     })
   }, [ctx.baby.id, ctx.household.id, qc])
 }

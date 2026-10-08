@@ -33,6 +33,17 @@ export interface Household extends FeedingSettings {
   // 이유식 설정은 아이별(Baby)로 쓴다. 여기 값은 아이에게 설정이 없을 때의 기본값
 }
 
+/** 같은 다이어리를 쓰는 사람. 이메일은 가려서(ab***@gmail.com) 받는다 */
+export interface Member {
+  userId: string
+  displayName: string | null
+  maskedEmail: string | null
+  joinedAt: string
+  /** 다이어리를 만든 사람 (가장 먼저 들어온 사람). 내보내기·코드 바꾸기를 할 수 있다 */
+  isOwner: boolean
+  isMe: boolean
+}
+
 export interface MealItem {
   name: string
   grams: number | null

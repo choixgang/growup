@@ -17,6 +17,7 @@ export default function OnboardingPage() {
     setBabies((prev) => prev.map((b, idx) => (idx === i ? { ...b, ...patch } : b)))
   const [style, setStyle] = useState<FeedingStyle>('topping')
   const [code, setCode] = useState('')
+  const [myName, setMyName] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -30,6 +31,7 @@ export default function OnboardingPage() {
         const hid = await repo.createHousehold(first.name.trim(), first.birth, style)
         for (const b of rest) await repo.addBaby(hid, b.name.trim(), b.birth, { feedingStyle: style })
       } else await repo.joinHousehold(code)
+      if (myName.trim()) await repo.setDisplayName(myName.trim())
       await qc.invalidateQueries({ queryKey: ['context'] })
     } catch (err) {
       setError((err as Error).message)
@@ -138,7 +140,7 @@ export default function OnboardingPage() {
               </>
             ) : (
               <label className="flex flex-col gap-1">
-                <span className="text-[12px] text-ink-soft">배우자 앱의 Settings → 배우자 초대에 있는 6자리 코드</span>
+                <span className="text-[12px] text-ink-soft">가족 앱의 Settings → 함께 쓰기에 있는 6자리 코드</span>
                 <input
                   className="field date-serif text-3xl tracking-[0.3em] uppercase"
                   required
@@ -150,6 +152,7 @@ export default function OnboardingPage() {
                 />
               </label>
             )}
+            {repo.kind === 'supabase' && <MyNameField value={myName} onChange={setMyName} />}
             {error && <p className="text-[13px] text-warn">{error}</p>}
             <button className="btn btn-primary mt-2" disabled={busy}>
               {step === 'create' ? '다이어리 시작하기' : '참여하기'}
@@ -185,5 +188,22 @@ function ChoiceCard({
         <span className="mt-0.5 block text-[12px] text-ink-soft">{desc}</span>
       </span>
     </button>
+  )
+}
+
+/** 같은 다이어리 사람에게 보이는 이름. 이메일 대신 이 이름으로 서로를 알아본다 */
+function MyNameField({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  return (
+    <label className="flex flex-col gap-1">
+      <span className="text-[12px] text-ink-soft">나는 아기의 · 함께 쓰는 가족에게 보이는 이름이에요</span>
+      <input
+        className="field pen text-2xl"
+        required
+        maxLength={20}
+        placeholder="엄마, 아빠, 할머니…"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+      />
+    </label>
   )
 }

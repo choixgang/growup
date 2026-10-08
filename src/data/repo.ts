@@ -1,4 +1,4 @@
-import type { Baby, FeedingSettings, FeedingStyle, Household, Meal, MonthNote, WeekNote } from '../lib/types'
+import type { Baby, FeedingSettings, FeedingStyle, Household, Meal, Member, MonthNote, WeekNote } from '../lib/types'
 
 /** 저장소가 돌려주는 다이어리 정보. 아기는 등록 순서대로 */
 export interface StoredContext {
@@ -45,6 +45,12 @@ export interface Repo {
   /** 초대 코드로 참여. 이미 다른 다이어리에 있으면 그곳에서 나와 옮겨간다 */
   joinHousehold(inviteCode: string): Promise<void>
   getMemberCount(householdId: string): Promise<number>
+  listMembers(householdId: string): Promise<Member[]>
+  /** 같은 다이어리 사람에게 보이는 내 이름 (엄마, 아빠…) */
+  setDisplayName(name: string): Promise<void>
+  /** 만든 사람만 가능. 내보낸 뒤 초대 코드도 새로 바뀐다 */
+  removeMember(householdId: string, userId: string): Promise<void>
+  regenerateInviteCode(householdId: string): Promise<void>
   updateBaby(babyId: string, patch: Partial<Pick<Baby, 'name' | 'birthDate'> & FeedingSettings>): Promise<void>
   /** 쌍둥이·형제 추가. 아기마다 기록은 따로 */
   addBaby(householdId: string, name: string, birthDate: string, settings?: Partial<FeedingSettings>): Promise<void>

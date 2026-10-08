@@ -4,7 +4,7 @@ import { ArrowLeft, Baby, ChevronRight, CookingPot, Minus, Plus, UserRound, User
 import { Link, Navigate, useParams } from 'react-router-dom'
 import { useCtx } from '../App'
 import { repo } from '../data'
-import { useMeals, useUser } from '../data/hooks'
+import { useMeals, useMembers, useUser } from '../data/hooks'
 import StylePicker from '../components/StylePicker'
 import BabySwitcher from '../components/BabySwitcher'
 import { FEEDING_STYLE_LABEL } from '../lib/types'
@@ -60,7 +60,7 @@ function SettingsMenu() {
     {
       key: 'share',
       icon: <Users size={20} strokeWidth={1.5} />,
-      desc: repo.kind === 'supabase' ? `초대 코드 ${h.inviteCode} · 다른 다이어리 참여` : '이 기기에만 저장 중',
+      desc: repo.kind === 'supabase' ? `함께 쓰는 사람 · 초대 코드 ${h.inviteCode}` : '이 기기에만 저장 중',
     },
     ...(repo.kind === 'supabase'
       ? [{ key: 'account' as const, icon: <UserRound size={20} strokeWidth={1.5} />, desc: user?.email ?? '비밀번호 · 로그아웃' }]
@@ -337,12 +337,129 @@ function ShareSettings() {
   }
   return (
     <>
-      <Section title="배우자 초대">
-        <p className="text-[12px] text-ink-soft">배우자가 가입한 뒤 '초대 코드로 참여'에 이 코드를 넣으면 함께 볼 수 있어요.</p>
-        <p className="date-serif mt-2 text-center text-[34px] tracking-[0.3em] select-all">{ctx.household.inviteCode}</p>
-      </Section>
+      <MemberList />
+      <InviteCode />
       <JoinOtherDiary />
     </>
+  )
+}
+
+/** 함께 쓰는 사람. 표시 이름과 일부 가린 이메일만 보여주고, 만든 사람은 다른 사람을 내보낼 수 있다 */
+function MemberList() {
+  const ctx = useCtx()
+  const members = useMembers(ctx.household.id)
+  const qc = useQueryClient()
+  const me = members.data?.find((m) => m.isMe)
+  const [name, setName] = useState<string | null>(null) // null = 아직 안 고침
+  const [confirmId, setConfirmId] = useState<string | null>(null)
+  const [msg, setMsg] = useState<string | null>(null)
+
+  async function act(fn: () => Promise<void>, done: string) {
+    setMsg(null)
+    try {
+      await fn()
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ['members'] }),
+        qc.invalidateQueries({ queryKey: ['context'] }),
+      ])
+      setMsg(done)
+    } catch (e) {
+      setMsg((e as Error).message)
+    }
+  }
+
+  const nameValue = name ?? me?.displayName ?? ''
+  return (
+    <Section title="함께 쓰는 사람">
+      {members.isLoading && <p className="text-[13px] text-ink-faint">불러오는 중…</p>}
+      {members.isError && <p className="text-[13px] text-warn">{(members.error as Error).message}</p>}
+      <ul className="flex flex-col">
+        {members.data?.map((m, i) => (
+          <li key={m.userId} className={`py-2.5 ${i ? 'border-t border-line' : ''}`}>
+            <div className="flex items-center gap-2">
+              <span className="pen text-[22px] leading-none">{m.displayName || '이름 없음'}</span>
+              {m.isMe && <span className="rounded-full bg-rose-soft px-2 py-0.5 text-[11px] text-rose-deep">나</span>}
+              {m.isOwner && <span className="rounded-full bg-line px-2 py-0.5 text-[11px] text-ink-soft">만든 사람</span>}
+              {me?.isOwner && !m.isMe && (
+                <button
+                  className={`ml-auto rounded-full px-3 py-1 text-[12px] ${
+                    confirmId === m.userId ? 'bg-alert/15 text-alert' : 'text-ink-soft'
+                  }`}
+                  onClick={() => {
+                    if (confirmId !== m.userId) return setConfirmId(m.userId)
+                    setConfirmId(null)
+                    act(
+                      () => repo.removeMember(ctx.household.id, m.userId),
+                      `${m.displayName || '그 사람'}을(를) 내보냈어요. 초대 코드도 새로 바뀌었어요`,
+                    )
+                  }}
+                >
+                  {confirmId === m.userId ? '한 번 더 누르면 내보내기' : '내보내기'}
+                </button>
+              )}
+            </div>
+            <p className="mt-1 text-[12px] text-ink-faint">
+              {m.maskedEmail}
+              {m.joinedAt && ` · ${m.joinedAt.slice(0, 10).replace(/-/g, '.')} 참여`}
+            </p>
+          </li>
+        ))}
+      </ul>
+
+      <form
+        className="mt-2 flex items-end gap-2 border-t border-line pt-3"
+        onSubmit={(e) => {
+          e.preventDefault()
+          if (!nameValue.trim()) return
+          act(() => repo.setDisplayName(nameValue.trim()), '이름을 바꿨어요').then(() => setName(null))
+        }}
+      >
+        <label className="flex flex-1 flex-col gap-0.5">
+          <span className="text-[12px] text-ink-soft">내 이름</span>
+          <input
+            className="field pen text-[20px]"
+            maxLength={20}
+            placeholder="엄마, 아빠, 할머니…"
+            value={nameValue}
+            onChange={(e) => setName(e.target.value)}
+          />
+        </label>
+        {name !== null && name.trim() !== (me?.displayName ?? '') && (
+          <button className="btn btn-soft px-4 py-1.5 text-[13px]">저장</button>
+        )}
+      </form>
+      <p className="mt-2 text-[12px] leading-relaxed text-ink-faint">
+        같은 다이어리 사람에게는 이름과 일부를 가린 이메일만 보여요. 다이어리를 만든 사람만 다른 사람을 내보낼 수 있어요.
+      </p>
+      {msg && <p className="mt-2 text-center text-[13px] text-ink-soft">{msg}</p>}
+    </Section>
+  )
+}
+
+function InviteCode() {
+  const ctx = useCtx()
+  const members = useMembers(ctx.household.id)
+  const isOwner = members.data?.some((m) => m.isMe && m.isOwner) ?? false
+  const { run, message } = useRun()
+  const [confirm, setConfirm] = useState(false)
+  return (
+    <Section title="가족 초대">
+      <p className="text-[12px] text-ink-soft">가족이 가입한 뒤 '초대 코드로 참여'에 이 코드를 넣으면 함께 볼 수 있어요.</p>
+      <p className="date-serif mt-2 text-center text-[34px] tracking-[0.3em] select-all">{ctx.household.inviteCode}</p>
+      {isOwner && (
+        <button
+          className={`btn mt-2 w-full text-[13px] ${confirm ? 'bg-alert/15 text-alert' : 'btn-ghost text-ink-soft'}`}
+          onClick={() => {
+            if (!confirm) return setConfirm(true)
+            setConfirm(false)
+            run(() => repo.regenerateInviteCode(ctx.household.id), '새 코드로 바꿨어요. 예전 코드로는 더 이상 들어올 수 없어요')
+          }}
+        >
+          {confirm ? '예전 코드는 못 쓰게 돼요. 한 번 더 누르면 바꾸기' : '코드 바꾸기'}
+        </button>
+      )}
+      {message}
+    </Section>
   )
 }
 

@@ -180,6 +180,33 @@ export function createSupabaseRepo(url: string, anonKey: string): Repo {
       if (res.error) throw new Error(translateError(res.error.message))
       return res.count ?? 0
     },
+    async listMembers(householdId) {
+      const rows = check(await sb.rpc('list_household_members', { hid: householdId })) as {
+        user_id: string
+        display_name: string | null
+        masked_email: string | null
+        joined_at: string
+        is_owner: boolean
+        is_me: boolean
+      }[]
+      return rows.map((r) => ({
+        userId: r.user_id,
+        displayName: r.display_name,
+        maskedEmail: r.masked_email,
+        joinedAt: r.joined_at,
+        isOwner: r.is_owner,
+        isMe: r.is_me,
+      }))
+    },
+    async setDisplayName(name) {
+      check(await sb.rpc('set_display_name', { name }))
+    },
+    async removeMember(householdId, userId) {
+      check(await sb.rpc('remove_household_member', { hid: householdId, target: userId }))
+    },
+    async regenerateInviteCode(householdId) {
+      check(await sb.rpc('regenerate_invite_code', { hid: householdId }))
+    },
     async updateBaby(babyId, patch) {
       const row: Record<string, unknown> = settingsRow(patch)
       if (patch.name !== undefined) row.name = patch.name
@@ -289,6 +316,18 @@ export function createSupabaseRepo(url: string, anonKey: string): Repo {
         { event: '*', schema: 'public', table: 'households', filter: `id=eq.${householdId}` },
         () => cb('context'),
       )
+      // 구성원 변화: 목록을 새로 받고, 내가 내보내졌으면 다이어리 정보를 다시 불러온다(→ 첫 화면)
+      channel.on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'household_members', filter: `household_id=eq.${householdId}` },
+        () => cb('members'),
+      )
+      channel.on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'household_members' }, async (p) => {
+        const old = p.old as { household_id?: string; user_id?: string }
+        if (old.household_id !== householdId) return
+        const { data } = await sb.auth.getSession()
+        cb(old.user_id === data.session?.user.id ? 'context' : 'members')
+      })
       channel.subscribe()
       return () => {
         sb.removeChannel(channel)

@@ -117,6 +117,16 @@ export function createLocalRepo(): Repo {
     async getMemberCount() {
       return 1
     },
+    async listMembers() {
+      return [{ userId: LOCAL_USER.id, displayName: null, maskedEmail: null, joinedAt: '', isOwner: true, isMe: true }]
+    },
+    async setDisplayName() {},
+    async removeMember() {
+      throw new Error('로컬 모드에서는 함께 쓰는 사람이 없어요.')
+    },
+    async regenerateInviteCode() {
+      throw new Error('로컬 모드에는 초대 코드가 없어요.')
+    },
     async updateBaby(id, patch) {
       const db = load()
       db.babies = (db.babies ?? []).map((b) => (b.id === id ? { ...b, ...patch } : b))

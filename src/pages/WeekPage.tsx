@@ -19,6 +19,7 @@ import { circled, DAY_LABELS_EN, todayStr, weekDates, weekStartOf, ymd } from '.
 import { dPlus, itemReaction, mealReactions, normalizeName, type IngredientAnalysis } from '../lib/rules'
 import type { Meal, WeekNote } from '../lib/types'
 import ReactionIcon from '../components/ReactionIcon'
+import LinedTextarea from '../components/LinedTextarea'
 
 const PREF_LABEL = { like: '♡ 좋아함', normal: '보통', refuse: '거부' } as const
 
@@ -422,11 +423,11 @@ function WeekNotes({ babyId, weekStart }: { babyId: string; weekStart: string })
     <section className="mt-5 grid grid-cols-1 gap-3">
       <div className="rounded-[18px] bg-rose-soft px-4 pt-3 pb-4">
         <h2 className="title-serif text-right text-[20px] italic">Memo</h2>
-        <textarea
-          className="pen mt-1 min-h-[90px] w-full resize-none bg-transparent text-[20px] leading-[1.35]"
-          style={{
-            backgroundImage: 'repeating-linear-gradient(transparent 0 26px, rgba(150,120,100,0.22) 26px 27px)',
-          }}
+        <LinedTextarea
+          className="pen mt-1 text-[20px]"
+          lineHeight={27}
+          minLines={3}
+          lineColor="rgba(150,120,100,0.22)"
           placeholder="이번 주 메모"
           value={memo}
           onChange={(e) => setMemo(e.target.value)}

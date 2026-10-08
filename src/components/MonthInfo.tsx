@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react'
 import { Check } from 'lucide-react'
-import { MEMO_LINES, STAGE_LABEL, type MonthNote, type Stage } from '../lib/types'
+import LinedTextarea from './LinedTextarea'
+
+const NL = String.fromCharCode(10)
+import { MEMO_MIN_LINES, STAGE_LABEL, type MonthNote, type Stage } from '../lib/types'
 
 const STAGES: Stage[] = ['early', 'middle', 'late']
 
@@ -49,42 +52,31 @@ export default function MonthInfo({ note, onChange, variant }: Props) {
   )
 }
 
-/** 줄 노트 같은 세 줄 메모. 줄 수를 넘기는 줄바꿈은 받지 않는다 */
+/** 줄 노트 같은 메모. 기본 세 줄이고, 더 적으면 줄이 늘어난다 */
 function MemoLines({ value, isExport, onCommit }: { value: string; isExport: boolean; onCommit: (v: string) => void }) {
   const [draft, setDraft] = useState(value)
   useEffect(() => setDraft(value), [value])
-  const lineH = isExport ? 46 : 30
-  const lined: React.CSSProperties = {
-    height: lineH * MEMO_LINES,
-    lineHeight: `${lineH}px`,
-    backgroundImage: 'linear-gradient(transparent calc(100% - 1px), var(--color-line-strong) 1px)',
-    backgroundSize: `100% ${lineH}px`,
-    backgroundAttachment: 'local',
-  }
+  const lines = value.split(NL)
   return (
     <label className="flex flex-col">
       <span className={`text-ink-soft ${isExport ? 'text-[19px]' : 'text-[12px]'}`}>메모</span>
       {isExport ? (
         // 이미지에서는 배경 그라디언트 줄이 흐리게 나와서 줄마다 밑줄을 긋는다
         <div className="pen text-[32px]">
-          {Array.from({ length: MEMO_LINES }, (_, i) => (
-            <p
-              key={i}
-              className="truncate border-b border-line-strong"
-              style={{ height: lineH, lineHeight: `${lineH}px` }}
-            >
-              {value.split('\n')[i] ?? ''}
+          {Array.from({ length: Math.max(MEMO_MIN_LINES, lines.length) }, (_, i) => (
+            <p key={i} className="border-b border-line-strong break-all" style={{ minHeight: 46, lineHeight: '46px' }}>
+              {lines[i] ?? ''}
             </p>
           ))}
         </div>
       ) : (
-        <textarea
-          className="pen w-full resize-none overflow-y-auto bg-transparent text-[19px] outline-none"
-          style={lined}
-          rows={MEMO_LINES}
+        <LinedTextarea
+          className="pen text-[19px]"
+          lineHeight={30}
+          minLines={MEMO_MIN_LINES}
           value={draft}
           placeholder="주의할 재료, 이 달의 목표…"
-          onChange={(e) => setDraft(e.target.value.split('\n').slice(0, MEMO_LINES).join('\n'))}
+          onChange={(e) => setDraft(e.target.value)}
           onBlur={() => draft.trim() !== value && onCommit(draft.trim())}
         />
       )}

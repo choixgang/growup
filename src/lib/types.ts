@@ -97,11 +97,12 @@ export interface MonthNote {
   babyId: string
   month: string // yyyy-MM
   stage: Stage
-  /** 이 달의 메모 (세 줄). 예전의 '주의해야 할 식재료'·'이 달의 목표'는 읽을 때 합쳐진다 */
+  /** 이 달의 메모. 예전의 '주의해야 할 식재료'·'이 달의 목표'는 읽을 때 합쳐진다 */
   memo: string
 }
 
-export const MEMO_LINES = 3
+/** 이 달의 메모는 비어 있어도 세 줄이 보인다 */
+export const MEMO_MIN_LINES = 3
 
 /** 예전 두 칸(주의 재료, 목표)을 메모 한 칸으로 합친다 */
 export function legacyMemo(caution?: string | null, goal?: string | null): string {

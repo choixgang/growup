@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState } from 'react'
+import { flushSync } from 'react-dom'
 import { format, parseISO } from 'date-fns'
 import { ko } from 'date-fns/locale'
 import { AlertTriangle, Camera, Plus, Trash2, X } from 'lucide-react'
@@ -88,6 +89,15 @@ export default function MealSheet(props: Props) {
 
   function updateItem(i: number, patch: Partial<MealItem>) {
     setItems((prev) => prev.map((it, idx) => (idx === i ? { ...it, ...patch } : it)))
+  }
+
+  // 재료를 이어서 적을 때 키보드가 내려갔다 올라오며 화면이 들썩이지 않게, 새 칸으로 바로 포커스를 옮긴다.
+  // 모바일은 터치 이벤트 안에서 focus() 해야 키보드가 유지돼서 flushSync 로 칸을 먼저 그린다.
+  const nameRefs = useRef<(HTMLInputElement | null)[]>([])
+  function addItemAndFocus() {
+    const next = items.length
+    flushSync(() => setItems((p) => [...p, { name: '', grams: null }]))
+    nameRefs.current[next]?.focus()
   }
 
   async function pickPhoto(file: File | undefined) {
@@ -228,11 +238,22 @@ export default function MealSheet(props: Props) {
           {items.map((it, i) => (
             <div key={i} className="flex items-end gap-2">
               <input
+                ref={(el) => {
+                  nameRefs.current[i] = el
+                }}
                 className="field pen min-w-0 flex-1 text-[22px]"
                 placeholder={i === 0 ? '쌀' : '재료'}
                 list="ingredient-names"
+                enterKeyHint="next"
                 value={it.name}
                 onChange={(e) => updateItem(i, { name: e.target.value })}
+                onKeyDown={(e) => {
+                  // 한글 조합 중 Enter 는 글자 확정용이라 건너뛴다
+                  if (e.key !== 'Enter' || e.nativeEvent.isComposing) return
+                  e.preventDefault()
+                  if (i === items.length - 1) addItemAndFocus()
+                  else nameRefs.current[i + 1]?.focus()
+                }}
               />
               {!porridge && (
                 <div className="flex w-[78px] items-end">
@@ -261,7 +282,10 @@ export default function MealSheet(props: Props) {
         </div>
         <button
           className="mt-2 flex items-center gap-1 text-[13px] text-rose-deep"
-          onClick={() => setItems((p) => [...p, { name: '', grams: null }])}
+          // 누르는 순간 입력칸에서 포커스가 빠지면 키보드가 내려가므로 막는다
+          onPointerDown={(e) => e.preventDefault()}
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={addItemAndFocus}
         >
           <Plus size={15} /> 재료 추가
         </button>

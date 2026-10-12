@@ -1,5 +1,5 @@
 import { addDays, differenceInCalendarDays, format, parseISO } from 'date-fns'
-import type { ItemReaction, Meal } from './types'
+import type { FeedingStyle, ItemReaction, Meal, ReactionMode } from './types'
 
 /** 재료 이름 비교용 정규화: 공백 제거 + 소문자 */
 export function normalizeName(name: string): string {
@@ -73,16 +73,16 @@ export function analyzeIngredients(
     }
   }
 
-  // 재료별로 이상 반응을 고른 기록은 그 재료만 주의 재료로 둔다.
-  // 예전 기록(끼니 전체 반응)은 그날 테스트 중이던 새 재료 탓으로 보고, 테스트 중인 재료가 없으면
+  // 재료별 표시 모드는 이상 반응을 고른 재료만 주의 재료로 둔다.
+  // 전체 표시 모드는 그날 테스트 중이던 새 재료 탓으로 보고, 테스트 중인 재료가 없으면
   // 이미 먹어본 재료를 뺀 나머지 재료 전부를 주의 재료로 둔다.
   for (const meal of sorted) {
-    const picked = issueKeys(meal)
-    if (picked.length) {
-      for (const k of picked) cautionKeys.add(k)
+    if (!meal.log) continue
+    if (reactionModeOf(meal) === 'item') {
+      for (const k of issueKeys(meal)) cautionKeys.add(k)
       continue
     }
-    if (meal.log?.reaction !== 'issue' || hasItemReactions(meal)) continue
+    if (meal.log.reaction !== 'issue') continue
     const keys = meal.items.map((i) => normalizeName(i.name)).filter((k) => k && !known.has(k))
     const testing = keys.filter((k) => {
       const t = byKey.get(k)
@@ -132,8 +132,9 @@ export function summarizeMonth(meals: Meal[], analysis: IngredientAnalysis, mont
     .sort((a, b) => a.date.localeCompare(b.date) || a.slot - b.slot)
   for (const meal of sorted) {
     const log = meal.log!
-    // 죽은 어느 재료 때문인지 알기 어려워 재료 대신 죽 이름으로 모은다
-    if (meal.style === 'porridge' && !hasItemReactions(meal)) {
+    const overall = reactionModeOf(meal) === 'overall'
+    // 전체 표시로 적은 죽은 어느 재료 때문인지 알 수 없어 재료 대신 죽 이름으로 모은다
+    if (overall && meal.style === 'porridge') {
       const pref = log.preference ? PREF_REACTION[log.preference] : null
       const name = meal.title?.trim() || meal.items.map((i) => i.name.trim()).join('·')
       if (name) last.set(`죽:${normalizeName(name)}`, { name, r: pref === 'like' || pref === 'dislike' ? pref : null })
@@ -143,7 +144,7 @@ export function summarizeMonth(meals: Meal[], analysis: IngredientAnalysis, mont
       const key = normalizeName(item.name)
       if (!key) continue
       let r: ItemReaction | null = null
-      if (hasItemReactions(meal)) r = log.itemReactions?.[key] ?? null
+      if (!overall) r = log.itemReactions?.[key] ?? null
       else if (log.preference === 'like') r = 'like'
       else if (log.preference === 'refuse') r = 'dislike'
       if (!r) continue
@@ -191,8 +192,22 @@ export function checkDraft(
   return [...new Set(messages)]
 }
 
-function hasItemReactions(meal: Meal): boolean {
-  return Object.keys(meal.log?.itemReactions ?? {}).length > 0
+/** 새 끼니의 기본 표시 모드: 토핑은 재료별, 죽은 전체 */
+export function defaultReactionMode(style: FeedingStyle | undefined): ReactionMode {
+  return style === 'porridge' ? 'overall' : 'item'
+}
+
+/**
+ * 끼니 기록의 기호도 표시 모드. 모드를 저장하기 전 기록은 저장된 값으로 짐작한다:
+ * 재료별 반응이 있으면 재료별, 끼니 전체 기호도·이상 반응만 있으면 전체, 아무것도 없으면 기본값.
+ */
+export function reactionModeOf(meal: Pick<Meal, 'style' | 'log'>): ReactionMode {
+  const log = meal.log
+  if (log?.reactionMode) return log.reactionMode
+  if (Object.keys(log?.itemReactions ?? {}).length) return 'item'
+  if (meal.style === 'porridge') return 'overall'
+  if (log?.preference || log?.reaction === 'issue') return 'overall'
+  return 'item'
 }
 
 function issueKeys(meal: Meal): string[] {
@@ -203,12 +218,12 @@ function issueKeys(meal: Meal): string[] {
 const PREF_REACTION = { like: 'like', normal: 'normal', refuse: 'dislike' } as const
 
 /**
- * 끼니 전체 반응 (죽 이유식, 예전 기록). 재료별 반응을 고른 끼니는 빈 배열.
+ * 전체 표시 모드의 끼니 반응. 재료별 표시 모드면 빈 배열.
  * 기호도 하나 + 이상 반응이 있으면 'issue' 를 덧붙인다.
  */
 export function mealReactions(meal: Meal): ItemReaction[] {
   const log = meal.log
-  if (!log || hasItemReactions(meal)) return []
+  if (!log || reactionModeOf(meal) === 'item') return []
   const out: ItemReaction[] = []
   if (log.preference) out.push(PREF_REACTION[log.preference])
   if (log.reaction === 'issue') out.push('issue')
@@ -217,6 +232,7 @@ export function mealReactions(meal: Meal): ItemReaction[] {
 
 /** 이 끼니에서 재료(정규화 key)에 남긴 반응. 반응을 안 고른 재료는 없음 */
 export function itemReaction(meal: Meal, key: string): ItemReaction | null {
+  if (reactionModeOf(meal) === 'overall') return null
   return meal.log?.itemReactions?.[key] ?? null
 }
 

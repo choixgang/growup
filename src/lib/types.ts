@@ -62,13 +62,18 @@ export const ITEM_REACTIONS: { value: ItemReaction; label: string }[] = [
   { value: 'issue', label: '이상 반응' },
 ]
 
+/** 기호도를 재료마다 적는지(item), 끼니 전체로 적는지(overall) */
+export type ReactionMode = 'item' | 'overall'
+
 export interface MealLog {
   eatenAmount: string // 자유 입력 (예: "30ml", "절반")
   /** 재료 하나라도 이상 반응이면 'issue'. 재료별 반응이 생기기 전 기록은 끼니 전체 값만 있다 */
   reaction: Reaction
   reactionNote: string
-  /** 예전 기록의 끼니 전체 선호도. 새 기록은 itemReactions 를 쓴다 */
+  /** 전체 표시 모드의 끼니 전체 기호도 */
   preference: Preference | null
+  /** 예전 기록에는 없어서 저장된 값으로 짐작한다 (rules.reactionModeOf) */
+  reactionMode?: ReactionMode
   /** 정규화한 재료 이름 → 반응 */
   itemReactions?: Record<string, ItemReaction>
   photoUrl: string | null

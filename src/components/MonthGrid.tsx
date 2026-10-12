@@ -251,6 +251,8 @@ function ExportCellBody({ meals, analysis }: { meals: Meal[]; analysis: Ingredie
                   {it.name}
                   {it.grams != null ? ` ${it.grams}g` : ''}
                   {x.reaction && <ReactionIcon reaction={x.reaction} className="ml-1 text-[20px]" />}
+                  {i === m.items.length - 1 &&
+                    mealReactions(m).map((r) => <ReactionIcon key={r} reaction={r} className="ml-1 text-[20px]" />)}
                 </div>
               )
             })}

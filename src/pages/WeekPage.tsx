@@ -21,8 +21,6 @@ import type { Meal, WeekNote } from '../lib/types'
 import ReactionIcon from '../components/ReactionIcon'
 import LinedTextarea from '../components/LinedTextarea'
 
-const PREF_LABEL = { like: '♡ 좋아함', normal: '보통', refuse: '거부' } as const
-
 export default function WeekPage() {
   const ctx = useCtx()
   const navigate = useNavigate()
@@ -241,7 +239,8 @@ function MealRow({
   const newKeys = new Set(analysis.newByDate.get(meal.date) ?? [])
   const log = meal.log
   const porridge = meal.style === 'porridge'
-  const hasItemReactions = Object.keys(log?.itemReactions ?? {}).length > 0
+  const hasItemReactions = meal.items.some((it) => itemReaction(meal, normalizeName(it.name)))
+  const whole = mealReactions(meal)
   return (
     <div className="relative overflow-hidden border-b border-dashed border-line last:border-0">
       {gesture.dx < 0 && (
@@ -273,7 +272,7 @@ function MealRow({
             {multi && <span className="text-ink-soft">{circled(meal.slot)}</span>}
             <span>{meal.title || '죽'}</span>
             {meal.totalMl != null && <span className="text-ink-soft">{meal.totalMl}ml</span>}
-            {mealReactions(meal).map((r) => (
+            {whole.map((r) => (
               <ReactionIcon key={r} reaction={r} className="self-center text-[14px]" />
             ))}
           </div>
@@ -302,6 +301,8 @@ function MealRow({
               </span>
             )
           })}
+          {!porridge &&
+            whole.map((r) => <ReactionIcon key={r} reaction={r} className="self-center text-[14px]" />)}
         </div>
         {log ? (
           <div className="mt-0.5 flex items-center gap-2 text-[12px] text-ink-soft">
@@ -317,14 +318,13 @@ function MealRow({
             <span className="pen text-[17px]">
               {[
                 log.eatenAmount && `먹은 양 ${log.eatenAmount}`,
-                !hasItemReactions && !porridge && log.preference && PREF_LABEL[log.preference],
-                log.reaction === 'issue' || hasItemReactions ? null : '반응 없음',
+                log.reaction === 'issue' || hasItemReactions || whole.length ? null : '반응 없음',
               ]
                 .filter(Boolean)
                 .join(' · ')}
             </span>
-            {log.reaction === 'issue' && (log.reactionNote || (!hasItemReactions && !porridge)) && (
-              <span className="pen text-[17px] text-alert">⚠ {log.reactionNote || '이상 반응'}</span>
+            {log.reaction === 'issue' && log.reactionNote && (
+              <span className="pen text-[17px] text-alert">⚠ {log.reactionNote}</span>
             )}
           </div>
         ) : (

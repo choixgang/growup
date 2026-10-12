@@ -4,13 +4,13 @@ import { format, parseISO } from 'date-fns'
 import { ko } from 'date-fns/locale'
 import { AlertTriangle, Camera, Plus, Trash2, X } from 'lucide-react'
 import { repo } from '../data'
-import { analyzeIngredients, checkDraft, normalizeName } from '../lib/rules'
+import { analyzeIngredients, checkDraft, defaultReactionMode, normalizeName, reactionModeOf } from '../lib/rules'
 import { newIngredientSuggestions, pairingNotes, pairingSuggestions } from '../lib/pairings'
 import ReactionIcon from './ReactionIcon'
 import { ingredientsFromTitle } from '../lib/ingredients'
 import { preparePhoto } from '../lib/image'
 import { circled } from '../lib/dates'
-import { emptyLog, ITEM_REACTIONS, type FeedingStyle, type ItemReaction, type Meal, type MealItem, type MealLog, type Preference } from '../lib/types'
+import { emptyLog, ITEM_REACTIONS, type FeedingStyle, type ItemReaction, type Meal, type MealItem, type MealLog, type Preference, type ReactionMode } from '../lib/types'
 
 interface Props {
   babyId: string
@@ -45,6 +45,9 @@ export default function MealSheet(props: Props) {
   }
   const [items, setItems] = useState<MealItem[]>(meal?.items.length ? meal.items : [{ name: '', grams: null }])
   const [log, setLog] = useState<MealLog | null>(meal?.log ?? null)
+  // 기호도 표시 모드. 토핑은 재료별, 죽은 전체가 기본값이고 둘 다 고를 수 있다
+  const [mode, setMode] = useState<ReactionMode>(meal ? reactionModeOf(meal) : defaultReactionMode(props.defaultStyle))
+  const overall = mode === 'overall'
   const [saving, setSaving] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -89,15 +92,13 @@ export default function MealSheet(props: Props) {
     return [...tried, ...fresh]
   }, [itemNames.join('|'), eatenBefore, canTryNew])
 
-  // 예전 기록(끼니 전체 반응)은 재료별 반응을 하나도 안 골랐을 때만 그 값을 유지한다
-  // 죽은 재료별로 알아채기 어려워 끼니 전체의 기호도·이상 반응만 받는다
   const hasIssue = log
-    ? porridge
+    ? overall
       ? log.reaction === 'issue'
-      : Object.keys(log.itemReactions ?? {}).length
-      ? Object.values(log.itemReactions ?? {}).includes('issue')
-      : log.reaction === 'issue'
+      : Object.values(log.itemReactions ?? {}).includes('issue')
     : false
+  const hasAnyReaction =
+    !!log && (Object.keys(log.itemReactions ?? {}).length > 0 || !!log.preference || log.reaction === 'issue')
 
   function setItemReaction(key: string, value: ItemReaction | null) {
     setLog((l) => {
@@ -140,16 +141,19 @@ export default function MealSheet(props: Props) {
     }
   }
 
+  // 지금 고른 표시 모드의 값만 저장한다 (다른 모드에서 골랐던 값은 버린다)
   function finishLog(l: MealLog): MealLog {
-    if (porridge) return { ...l, itemReactions: {}, loggedAt: meal?.log?.loggedAt ?? new Date().toISOString() }
+    const loggedAt = meal?.log?.loggedAt ?? new Date().toISOString()
+    if (overall) return { ...l, reactionMode: 'overall', itemReactions: {}, loggedAt }
     const keys = new Set(cleanItems.map((i) => normalizeName(i.name)))
     const reactions = Object.fromEntries(Object.entries(l.itemReactions ?? {}).filter(([k]) => keys.has(k)))
-    const picked = Object.keys(reactions).length > 0
     return {
       ...l,
+      reactionMode: 'item',
       itemReactions: reactions,
-      reaction: picked ? (Object.values(reactions).includes('issue') ? 'issue' : 'none') : l.reaction,
-      loggedAt: meal?.log?.loggedAt ?? new Date().toISOString(),
+      preference: null,
+      reaction: Object.values(reactions).includes('issue') ? 'issue' : 'none',
+      loggedAt,
     }
   }
 
@@ -204,7 +208,11 @@ export default function MealSheet(props: Props) {
               <button
                 key={v}
                 className={`rounded-full px-3.5 py-1 ${style === v ? 'bg-ink text-paper' : 'text-ink-soft'}`}
-                onClick={() => setStyle(v)}
+                onClick={() => {
+                  setStyle(v)
+                  // 아직 반응을 하나도 안 골랐으면 방식에 맞는 기본 표시 모드로 바꾼다
+                  if (!hasAnyReaction) setMode(defaultReactionMode(v))
+                }}
               >
                 {v === 'topping' ? '토핑' : '죽'}
               </button>
@@ -381,9 +389,23 @@ export default function MealSheet(props: Props) {
             </label>
 
             <div>
-              <span className="text-[12px] text-ink-soft">{porridge ? '죽 전체 반응' : '재료별 반응'}</span>
-              {porridge ? (
-                <PorridgeReaction log={log} onChange={setLog} />
+              <div className="flex items-center justify-between">
+                <span className="text-[12px] text-ink-soft">기호도</span>
+                <div className="flex rounded-full bg-rose-soft p-0.5 text-[12px]">
+                  {(['item', 'overall'] as const).map((v) => (
+                    <button
+                      key={v}
+                      aria-pressed={mode === v}
+                      className={`rounded-full px-3 py-0.5 ${mode === v ? 'bg-ink text-paper' : 'text-ink-soft'}`}
+                      onClick={() => setMode(v)}
+                    >
+                      {v === 'item' ? '재료별' : '전체'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {overall ? (
+                <OverallReaction log={log} onChange={setLog} />
               ) : cleanItems.length ? (
                 <div className="mt-1 flex flex-col">
                   {cleanItems.map((it) => {
@@ -502,8 +524,8 @@ export default function MealSheet(props: Props) {
 
 const PREF_OF: Partial<Record<ItemReaction, Preference>> = { like: 'like', normal: 'normal', dislike: 'refuse' }
 
-/** 죽: 기호도(좋아함·보통·싫어함 중 하나)와 이상 반응(따로 켜고 끔) */
-function PorridgeReaction({ log, onChange }: { log: MealLog; onChange: (l: MealLog) => void }) {
+/** 전체 표시 모드: 끼니 전체 기호도(좋아함·보통·싫어함 중 하나)와 이상 반응(따로 켜고 끔) */
+function OverallReaction({ log, onChange }: { log: MealLog; onChange: (l: MealLog) => void }) {
   return (
     <div className="mt-1">
       <div className="flex flex-wrap items-center gap-1.5">
@@ -528,7 +550,7 @@ function PorridgeReaction({ log, onChange }: { log: MealLog; onChange: (l: MealL
           )
         })}
       </div>
-      <p className="mt-1 text-[11px] text-ink-faint">죽은 어떤 재료 때문인지 알기 어려워 전체 반응만 적어요</p>
+      <p className="mt-1 text-[11px] text-ink-faint">어떤 재료 때문인지 알기 어려울 땐 끼니 전체 반응으로 적어요</p>
     </div>
   )
 }

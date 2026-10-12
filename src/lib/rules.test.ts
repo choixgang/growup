@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { analyzeIngredients, checkDraft, dPlus, mealReactions, summarizeMonth } from './rules'
+import { analyzeIngredients, checkDraft, dPlus, mealReactions, reactionModeOf, summarizeMonth } from './rules'
 import type { Meal } from './types'
 
 let n = 0
@@ -141,5 +141,38 @@ describe('죽 이유식 반응', () => {
     const s = summarizeMonth(meals, analyzeIngredients(meals, 3), '2026-10')
     expect(s.liked).toEqual(['소고기죽'])
     expect(s.disliked).toEqual(['쌀·애호박'])
+  })
+})
+
+describe('기호도 표시 모드', () => {
+  const logged = (style: 'topping' | 'porridge', log: Partial<NonNullable<Meal['log']>>): Meal => ({
+    ...meal('2026-10-01', ['쌀', '소고기']),
+    style,
+    log: { eatenAmount: '', reaction: 'none', reactionNote: '', preference: null, photoUrl: null, loggedAt: '', itemReactions: {}, ...log },
+  })
+
+  it('모드가 없는 예전 기록은 저장된 값으로 짐작한다', () => {
+    expect(reactionModeOf(logged('topping', { itemReactions: { 쌀: 'like' } }))).toBe('item')
+    expect(reactionModeOf(logged('topping', { preference: 'like' }))).toBe('overall')
+    expect(reactionModeOf(logged('topping', {}))).toBe('item')
+    expect(reactionModeOf(logged('porridge', {}))).toBe('overall')
+    expect(reactionModeOf(logged('porridge', { itemReactions: { 쌀: 'issue' } }))).toBe('item')
+  })
+
+  it('저장된 모드를 따른다', () => {
+    expect(reactionModeOf(logged('porridge', { reactionMode: 'item' }))).toBe('item')
+    expect(reactionModeOf(logged('topping', { reactionMode: 'overall' }))).toBe('overall')
+  })
+
+  it('토핑도 전체 표시로 적으면 끼니 반응 아이콘을 돌려준다', () => {
+    const m = logged('topping', { reactionMode: 'overall', preference: 'like' })
+    expect(mealReactions(m)).toEqual(['like'])
+    expect(summarizeMonth([m], analyzeIngredients([m], 3), '2026-10').liked).toEqual(['쌀', '소고기'])
+  })
+
+  it('죽도 재료별로 적으면 재료마다 요약한다', () => {
+    const m = logged('porridge', { reactionMode: 'item', itemReactions: { 소고기: 'dislike' } })
+    expect(mealReactions(m)).toEqual([])
+    expect(summarizeMonth([m], analyzeIngredients([m], 3), '2026-10').disliked).toEqual(['소고기'])
   })
 })

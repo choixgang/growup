@@ -189,14 +189,21 @@ function AppCellBody({ meals, entries }: { meals: Meal[]; entries: DayEntry[] })
           {e.reaction && <ReactionIcon reaction={e.reaction} className="ml-px shrink-0 text-[9px] leading-none" />}
         </span>
       ))}
-      <div className="mt-[2px] flex gap-[3px] pl-[1px]">
+      <div className="mt-[2px] flex flex-wrap items-center gap-[3px] pl-[1px]">
         {meals.map((m) => (
-          <span
-            key={m.id}
-            className={`h-[5px] w-[5px] rounded-full ${
-              m.log ? (m.log.reaction === 'issue' ? 'bg-alert' : 'bg-ink-soft') : 'border border-ink-faint'
-            }`}
-          />
+          <span key={m.id} className="flex items-center gap-px">
+            <span
+              className={`h-[5px] w-[5px] rounded-full ${
+                m.log ? (m.log.reaction === 'issue' ? 'bg-alert' : 'bg-ink-soft') : 'border border-ink-faint'
+              }`}
+            />
+            {/* 전체 표시 모드의 기호도는 먹임 점 옆에 (이상 반응은 빨간 점으로 보인다) */}
+            {mealReactions(m)
+              .filter((r) => r !== 'issue')
+              .map((r) => (
+                <ReactionIcon key={r} reaction={r} className="shrink-0 text-[9px] leading-none" />
+              ))}
+          </span>
         ))}
       </div>
     </div>

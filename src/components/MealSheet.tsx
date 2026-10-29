@@ -17,6 +17,8 @@ interface Props {
   date: string
   slot: number
   meal: Meal | null
+  /** 새 끼니를 열 때 미리 넣어 둘 재료 (식재료 도전판에서 식단 계획) */
+  initialItems?: MealItem[]
   allMeals: Meal[]
   intervalDays: number
   knownIngredients: string[]
@@ -43,7 +45,9 @@ export default function MealSheet(props: Props) {
     setItems((prev) => [...prev.filter((it) => it.name.trim()), ...titleHint.map((name) => ({ name, grams: null }))])
     setTitleHint([])
   }
-  const [items, setItems] = useState<MealItem[]>(meal?.items.length ? meal.items : [{ name: '', grams: null }])
+  const [items, setItems] = useState<MealItem[]>(
+    meal?.items.length ? meal.items : props.initialItems?.length ? props.initialItems : [{ name: '', grams: null }],
+  )
   const [log, setLog] = useState<MealLog | null>(meal?.log ?? null)
   // 기호도 표시 모드. 토핑은 재료별, 죽은 전체가 기본값이고 둘 다 고를 수 있다
   const [mode, setMode] = useState<ReactionMode>(meal ? reactionModeOf(meal) : defaultReactionMode(props.defaultStyle))

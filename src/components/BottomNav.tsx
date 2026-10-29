@@ -1,9 +1,10 @@
 import { NavLink, useLocation } from 'react-router-dom'
-import { CalendarDays, Rows3, Settings2 } from 'lucide-react'
+import { CalendarDays, Rows3, Settings2, Sticker } from 'lucide-react'
 
 const items = [
   { to: '/', label: 'Monthly', icon: CalendarDays, match: (p: string) => p === '/' },
   { to: '/week', label: 'Weekly', icon: Rows3, match: (p: string) => p.startsWith('/week') },
+  { to: '/foods', label: 'Foods', icon: Sticker, match: (p: string) => p.startsWith('/foods') },
   { to: '/settings', label: 'Settings', icon: Settings2, match: (p: string) => p.startsWith('/settings') },
 ]
 
@@ -19,7 +20,7 @@ export default function BottomNav() {
             <NavLink
               key={to}
               to={to}
-              className={`flex min-w-[72px] flex-col items-center gap-0.5 rounded-xl px-3 py-1 ${
+              className={`flex min-w-[64px] flex-col items-center gap-0.5 rounded-xl px-3 py-1 ${
                 active ? 'text-ink' : 'text-ink-faint'
               }`}
             >

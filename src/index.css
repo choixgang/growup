@@ -148,6 +148,13 @@ body {
   }
 }
 
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
 .safe-bottom {
   padding-bottom: env(safe-area-inset-bottom);
 }
@@ -166,8 +173,101 @@ body {
   animation: sheet-up 0.22s ease-out;
 }
 
+/* 식재료 도전판: 먹기 전에는 흑백, 먹으면 흰 테두리가 있는 스티커 */
+.food-blank {
+  /* 흰 재료(찹쌀·두부)도 보이게 아주 옅은 윤곽 */
+  filter: grayscale(1) drop-shadow(0 0 0.6px rgba(70, 55, 45, 0.7));
+  opacity: 0.42;
+}
+.sticker {
+  filter: drop-shadow(1.3px 0 0 #fff) drop-shadow(-1.3px 0 0 #fff) drop-shadow(0 1.3px 0 #fff)
+    drop-shadow(0 -1.3px 0 #fff) drop-shadow(0 0 0.6px rgba(80, 55, 35, 0.45))
+    drop-shadow(0 1.5px 1.5px rgba(80, 55, 35, 0.25));
+}
+.sticker-lg {
+  filter: drop-shadow(2.5px 0 0 #fff) drop-shadow(-2.5px 0 0 #fff) drop-shadow(0 2.5px 0 #fff)
+    drop-shadow(0 -2.5px 0 #fff) drop-shadow(0 0 1px rgba(80, 55, 35, 0.45))
+    drop-shadow(0 3px 3px rgba(80, 55, 35, 0.22));
+}
+
+/* 스티커 붙이기: 위에서 기울어진 채 내려와 꾹 눌리듯 붙는다 */
+@keyframes sticker-on {
+  0% {
+    transform: translate(-6px, -24px) rotate(-18deg) scale(1.45);
+    opacity: 0;
+  }
+  45% {
+    opacity: 1;
+  }
+  60% {
+    transform: translate(0, 2px) rotate(3deg) scale(0.88);
+  }
+  80% {
+    transform: rotate(-1deg) scale(1.05);
+  }
+  100% {
+    transform: none;
+  }
+}
+.sticker-on {
+  animation: sticker-on 0.55s cubic-bezier(0.3, 0.7, 0.4, 1) both;
+}
+
+/* 스티커 떼기: 왼쪽 아래를 축으로 들리며 떨어져 나간다 */
+@keyframes sticker-off {
+  0% {
+    transform: none;
+    opacity: 1;
+  }
+  35% {
+    transform: rotate(-10deg) skewX(-8deg) scale(1.06) translate(1px, -3px);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(22px, -30px) rotate(28deg) scale(1.2);
+    opacity: 0;
+  }
+}
+.sticker-off {
+  transform-origin: 15% 90%;
+  animation: sticker-off 0.5s ease-in both;
+}
+
+/* 붙는 순간 퍼지는 동그라미 */
+@keyframes sticker-burst {
+  0% {
+    transform: scale(0.4);
+    opacity: 0.7;
+  }
+  100% {
+    transform: scale(1.5);
+    opacity: 0;
+  }
+}
+.sticker-burst {
+  animation: sticker-burst 0.55s ease-out 0.25s both;
+}
+
+@keyframes pop-in {
+  from {
+    transform: scale(0.92);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+.pop-in {
+  animation: pop-in 0.25s ease-out;
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .sheet-up {
-    animation: none;
+  .sheet-up,
+  .pop-in,
+  .sticker-on,
+  .sticker-off,
+  .sticker-burst {
+    animation-duration: 0.01s;
   }
 }

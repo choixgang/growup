@@ -9,6 +9,8 @@ import MonthPage from './pages/MonthPage'
 import WeekPage from './pages/WeekPage'
 import SettingsPage from './pages/SettingsPage'
 import ExportPage from './pages/ExportPage'
+import FoodsPage from './pages/FoodsPage'
+import FoodsExportPage from './pages/FoodsExportPage'
 import BottomNav from './components/BottomNav'
 
 const Ctx = createContext<AppContext | null>(null)
@@ -81,6 +83,8 @@ function Shell({ ctx }: { ctx: AppContext }) {
           <Route path="/" element={<MonthPage />} />
           <Route path="/week/:start" element={<WeekPage />} />
           <Route path="/week" element={<WeekPage />} />
+          <Route path="/foods" element={<FoodsPage />} />
+          <Route path="/export/foods" element={<FoodsExportPage />} />
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="/settings/:menu" element={<SettingsPage />} />
           <Route path="/export/:month" element={<ExportPage />} />

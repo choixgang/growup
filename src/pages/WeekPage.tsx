@@ -17,7 +17,7 @@ import {
 } from '../data/hooks'
 import { DAY_LABELS_EN, todayStr, weekDates, weekStartOf, ymd } from '../lib/dates'
 import { dPlus, itemReaction, mealReactions, normalizeName, type IngredientAnalysis } from '../lib/rules'
-import { mealTypeLabel, nextMealSlot, type Meal, type WeekNote } from '../lib/types'
+import { mealTypeLabel, nextMealSlot, type ItemReaction, type Meal, type WeekNote } from '../lib/types'
 import ReactionIcon from '../components/ReactionIcon'
 import LinedTextarea from '../components/LinedTextarea'
 
@@ -265,12 +265,9 @@ function MealRow({
       >
         {porridge && (
           <div className="pen flex flex-wrap items-baseline gap-x-2 text-[21px] leading-[1.2]">
-            <MealTag slot={meal.slot} />
+            <MealTag slot={meal.slot} reactions={whole} />
             <span>{meal.title || '죽'}</span>
             {meal.totalMl != null && <span className="text-ink-soft">{meal.totalMl}ml</span>}
-            {whole.map((r) => (
-              <ReactionIcon key={r} reaction={r} className="self-center text-[14px]" />
-            ))}
           </div>
         )}
         <div
@@ -278,7 +275,7 @@ function MealRow({
             porridge ? 'gap-x-1.5 text-[17px] leading-[1.15] text-ink-soft' : 'gap-x-2.5 text-[21px] leading-[1.2]'
           }`}
         >
-          {!porridge && <MealTag slot={meal.slot} />}
+          {!porridge && <MealTag slot={meal.slot} reactions={whole} />}
           {meal.items.map((it, i) => {
             const key = normalizeName(it.name)
             const caution = analysis.cautionKeys.has(key)
@@ -297,8 +294,6 @@ function MealRow({
               </span>
             )
           })}
-          {!porridge &&
-            whole.map((r) => <ReactionIcon key={r} reaction={r} className="self-center text-[14px]" />)}
         </div>
         {log ? (
           <div className="mt-0.5 flex items-center gap-2 text-[12px] text-ink-soft">
@@ -331,13 +326,19 @@ function MealRow({
   )
 }
 
-function MealTag({ slot }: { slot: number }) {
+/** 끼니 태그. 끼니 전체로 적은 반응은 태그 바로 오른쪽에 붙여 재료 반응과 구분한다 */
+function MealTag({ slot, reactions }: { slot: number; reactions: ItemReaction[] }) {
   return (
-    <span
-      className="self-center rounded-full bg-rose-soft px-1.5 py-px text-[11px] leading-[1.4] text-ink-soft"
-      style={{ fontFamily: 'var(--font-batang)' }}
-    >
-      {mealTypeLabel(slot)}
+    <span className="inline-flex items-center gap-0.5 self-center">
+      <span
+        className="rounded-full bg-rose-soft px-1.5 py-px text-[11px] leading-[1.4] text-ink-soft"
+        style={{ fontFamily: 'var(--font-batang)' }}
+      >
+        {mealTypeLabel(slot)}
+      </span>
+      {reactions.map((r) => (
+        <ReactionIcon key={r} reaction={r} className="text-[14px]" />
+      ))}
     </span>
   )
 }

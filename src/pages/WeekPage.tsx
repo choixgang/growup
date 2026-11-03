@@ -15,9 +15,9 @@ import {
   useSaveWeekNote,
   useWeekNote,
 } from '../data/hooks'
-import { circled, DAY_LABELS_EN, todayStr, weekDates, weekStartOf, ymd } from '../lib/dates'
+import { DAY_LABELS_EN, todayStr, weekDates, weekStartOf, ymd } from '../lib/dates'
 import { dPlus, itemReaction, mealReactions, normalizeName, type IngredientAnalysis } from '../lib/rules'
-import type { Meal, WeekNote } from '../lib/types'
+import { mealTypeLabel, nextMealSlot, type Meal, type WeekNote } from '../lib/types'
 import ReactionIcon from '../components/ReactionIcon'
 import LinedTextarea from '../components/LinedTextarea'
 
@@ -57,8 +57,7 @@ export default function WeekPage() {
     saveMeal.mutate(rest)
   }
 
-  async function copyMeal(src: Meal, date: string) {
-    const slot = (meals.data ?? []).filter((m) => m.date === date).reduce((n, m) => Math.max(n, m.slot), 0) + 1
+  async function copyMeal(src: Meal, date: string, slot: number) {
     await saveMeal.mutateAsync({
       babyId: src.babyId,
       date,
@@ -69,7 +68,7 @@ export default function WeekPage() {
       items: src.items.map((i) => ({ ...i })),
       log: null,
     })
-    setToast({ text: `${format(parseISO(date), 'M월 d일')}에 복사했어요` })
+    setToast({ text: `${format(parseISO(date), 'M월 d일')} ${mealTypeLabel(slot)}으로 복사했어요` })
   }
 
   const ingredientNames = useMemo(
@@ -113,7 +112,7 @@ export default function WeekPage() {
       <section className="mt-3 flex flex-col gap-2">
         {dates.map((date, i) => {
           const dayMeals = (meals.data ?? []).filter((m) => m.date === date).sort((a, b) => a.slot - b.slot)
-          const nextSlot = dayMeals.reduce((n, m) => Math.max(n, m.slot), 0) + 1
+          const nextSlot = nextMealSlot(dayMeals)
           const isToday = date === todayStr()
           const focused = date === focusDate
           return (
@@ -144,7 +143,6 @@ export default function WeekPage() {
                   <MealRow
                     key={m.id}
                     meal={m}
-                    multi={dayMeals.length > 1}
                     analysis={analysis}
                     open={openRow === m.id}
                     onOpenChange={(o) => setOpenRow(o ? m.id : null)}
@@ -180,7 +178,7 @@ export default function WeekPage() {
       )}
 
       {copying && (
-        <CopyMealSheet meal={copying} onCopy={(d) => copyMeal(copying, d)} onClose={() => setCopying(null)} />
+        <CopyMealSheet meal={copying} onCopy={(d, slot) => copyMeal(copying, d, slot)} onClose={() => setCopying(null)} />
       )}
 
       {toast && (
@@ -218,7 +216,6 @@ export default function WeekPage() {
 
 function MealRow({
   meal,
-  multi,
   analysis,
   open,
   onOpenChange,
@@ -227,7 +224,6 @@ function MealRow({
   onDelete,
 }: {
   meal: Meal
-  multi: boolean
   analysis: IngredientAnalysis
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -269,7 +265,7 @@ function MealRow({
       >
         {porridge && (
           <div className="pen flex flex-wrap items-baseline gap-x-2 text-[21px] leading-[1.2]">
-            {multi && <span className="text-ink-soft">{circled(meal.slot)}</span>}
+            <MealTag slot={meal.slot} />
             <span>{meal.title || '죽'}</span>
             {meal.totalMl != null && <span className="text-ink-soft">{meal.totalMl}ml</span>}
             {whole.map((r) => (
@@ -282,7 +278,7 @@ function MealRow({
             porridge ? 'gap-x-1.5 text-[17px] leading-[1.15] text-ink-soft' : 'gap-x-2.5 text-[21px] leading-[1.2]'
           }`}
         >
-          {multi && !porridge && <span className="text-ink-soft">{circled(meal.slot)}</span>}
+          {!porridge && <MealTag slot={meal.slot} />}
           {meal.items.map((it, i) => {
             const key = normalizeName(it.name)
             const caution = analysis.cautionKeys.has(key)
@@ -332,6 +328,17 @@ function MealRow({
         )}
       </button>
     </div>
+  )
+}
+
+function MealTag({ slot }: { slot: number }) {
+  return (
+    <span
+      className="self-center rounded-full bg-rose-soft px-1.5 py-px text-[11px] leading-[1.4] text-ink-soft"
+      style={{ fontFamily: 'var(--font-batang)' }}
+    >
+      {mealTypeLabel(slot)}
+    </span>
   )
 }
 

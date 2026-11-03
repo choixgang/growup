@@ -53,15 +53,12 @@ export default function ImportMealsSheet({ weekDates, targetMeals, onClose, onDo
     setBusy(true)
     setError(null)
     try {
-      const nextSlot = new Map<string, number>()
-      for (const m of targetMeals) nextSlot.set(m.date, Math.max(nextSlot.get(m.date) ?? 0, m.slot))
+      // 끼니 종류(아침·점심…)는 불러온 식단 그대로 둔다
       for (const m of toImport) {
-        const slot = (nextSlot.get(m.date) ?? 0) + 1
-        nextSlot.set(m.date, slot)
         await repo.saveMeal({
           babyId: ctx.baby.id,
           date: m.date,
-          slot,
+          slot: m.slot,
           style: m.style ?? 'topping',
           title: m.title ?? '',
           totalMl: m.totalMl ?? null,

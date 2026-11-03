@@ -35,7 +35,7 @@ export interface IngredientAnalysis {
 
 /**
  * 모든 식단을 날짜순으로 훑어서, 재료가 처음 등장한 날을 '새 재료' 테스트 시작일로 본다.
- * 테스트 기간은 시작일부터 intervalDays 일 동안. 다른 새 재료의 테스트 기간 안에
+ * 테스트 기간은 시작일부터 intervalDays 일 동안 (그 끼니에서 재료에 따로 정한 기간이 있으면 그 기간). 다른 새 재료의 테스트 기간 안에
  * 또 새 재료가 시작되면 경고한다. 경고는 막지 않고 알려주기만 한다.
  */
 export function analyzeIngredients(
@@ -61,7 +61,7 @@ export function analyzeIngredients(
           key,
           name: item.name.trim(),
           start: meal.date,
-          end: format(addDays(parseISO(meal.date), interval - 1), 'yyyy-MM-dd'),
+          end: format(addDays(parseISO(meal.date), testDaysOf(item, interval) - 1), 'yyyy-MM-dd'),
           colorIndex: tests.length,
         }
         byKey.set(key, test)
@@ -161,7 +161,7 @@ export function summarizeMonth(meals: Meal[], analysis: IngredientAnalysis, mont
  */
 export function checkDraft(
   meals: Meal[],
-  draft: { id?: string; date: string; slot: number; items: { name: string }[] },
+  draft: { id?: string; date: string; slot: number; items: { name: string; testDays?: number }[] },
   intervalDays: number,
   knownIngredients: string[] = [],
 ): string[] {
@@ -173,7 +173,7 @@ export function checkDraft(
     babyId: '',
     date: draft.date,
     slot: draft.slot,
-    items: draft.items.map((i) => ({ name: i.name, grams: null })),
+    items: draft.items.map((i) => ({ name: i.name, grams: null, testDays: i.testDays })),
     log: null,
     updatedAt: '',
   }
@@ -190,6 +190,11 @@ export function checkDraft(
     }
   }
   return [...new Set(messages)]
+}
+
+/** 재료별 테스트 기간. 끼니에서 따로 정하지 않았으면 기본 간격 */
+export function testDaysOf(item: { testDays?: number }, intervalDays: number): number {
+  return Math.max(1, Math.floor(item.testDays ?? intervalDays))
 }
 
 /** 새 끼니의 기본 표시 모드: 토핑은 재료별, 죽은 전체 */

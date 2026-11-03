@@ -47,6 +47,29 @@ export interface Member {
 export interface MealItem {
   name: string
   grams: number | null
+  /** 이 재료를 처음 먹이는 끼니에서 정한 테스트 기간(일). 없으면 아이 설정의 기본 간격 */
+  testDays?: number
+}
+
+/**
+ * 끼니 종류. meals.slot 에 숫자로 저장한다 (1 아침, 2 점심, 3 저녁, 4 간식).
+ * 예전에 1)2)3) 순서로 적은 끼니는 그대로 아침·점심·저녁으로 읽히고, 4 이상은 간식으로 본다.
+ */
+export const MEAL_TYPES = [
+  { slot: 1, label: '아침' },
+  { slot: 2, label: '점심' },
+  { slot: 3, label: '저녁' },
+  { slot: 4, label: '간식' },
+] as const
+
+export function mealTypeLabel(slot: number): string {
+  return MEAL_TYPES[Math.min(Math.max(slot, 1), 4) - 1].label
+}
+
+/** 새 끼니의 기본 종류: 그날 아직 안 쓴 첫 끼니, 다 썼으면 간식 */
+export function nextMealSlot(dayMeals: { slot: number }[]): number {
+  const used = new Set(dayMeals.map((m) => Math.min(m.slot, 4)))
+  return MEAL_TYPES.find((t) => !used.has(t.slot))?.slot ?? 4
 }
 
 export type Reaction = 'none' | 'issue'
@@ -86,7 +109,7 @@ export interface Meal {
   id: string
   babyId: string
   date: string // yyyy-MM-dd
-  slot: number // 1, 2, 3 ... (끼니 순서)
+  slot: number // 끼니 종류 (MEAL_TYPES)
   /** 예전 기록에는 없어서 토핑으로 본다 */
   style?: FeedingStyle
   /** 죽 이름 (예: 양배추당근감자소고기죽). 죽일 때만 */

@@ -1,8 +1,8 @@
 import { parseISO } from 'date-fns'
 import { AlertTriangle } from 'lucide-react'
-import { circled, DAY_LABELS_EN, monthWeeks, stripsForWeek, todayStr } from '../lib/dates'
+import { DAY_LABELS_EN, monthWeeks, stripsForWeek, todayStr } from '../lib/dates'
 import { dPlus, itemReaction, mealReactions, normalizeName, strongerReaction, tapeColor, type IngredientAnalysis } from '../lib/rules'
-import type { ItemReaction, Meal } from '../lib/types'
+import { mealTypeLabel, type ItemReaction, type Meal } from '../lib/types'
 import ReactionIcon from './ReactionIcon'
 
 interface Props {
@@ -98,7 +98,7 @@ export default function MonthGrid({ month, meals, analysis, birthDate, variant, 
                   {isExport ? (
                     <ExportCellBody meals={dayMeals} analysis={analysis} />
                   ) : (
-                    <AppCellBody meals={dayMeals} entries={dayEntries(dayMeals, newKeys, analysis)} />
+                    <AppCellBody meals={dayMeals} newKeys={newKeys} analysis={analysis} />
                   )}
 
                   {hasCaution && (
@@ -152,42 +152,50 @@ interface DayEntry {
   reaction: ItemReaction | null
 }
 
-/** 그날 먹은(먹일) 재료 전부, 끼니 순서대로. 같은 재료는 한 번만 */
-function dayEntries(meals: Meal[], newKeys: string[], analysis: IngredientAnalysis): DayEntry[] {
+/** 한 끼니의 재료. 같은 재료는 한 번만. 새 재료 표시(+)는 그날 처음 나온 끼니에만 */
+function mealEntries(m: Meal, newKeys: string[], analysis: IngredientAnalysis, shown: Set<string>): DayEntry[] {
   const byKey = new Map<string, DayEntry>()
-  for (const m of meals) {
-    for (const it of m.items) {
-      const key = normalizeName(it.name)
-      if (!key) continue
-      const prev = byKey.get(key)
-      byKey.set(key, {
-        key,
-        name: prev?.name ?? it.name.trim(),
-        isNew: newKeys.includes(key),
-        caution: analysis.cautionKeys.has(key),
-        reaction: strongerReaction(prev?.reaction ?? null, itemReaction(m, key)),
-      })
-    }
+  for (const it of m.items) {
+    const key = normalizeName(it.name)
+    if (!key) continue
+    const prev = byKey.get(key)
+    byKey.set(key, {
+      key,
+      name: prev?.name ?? it.name.trim(),
+      isNew: newKeys.includes(key) && !shown.has(key),
+      caution: analysis.cautionKeys.has(key),
+      reaction: strongerReaction(prev?.reaction ?? null, itemReaction(m, key)),
+    })
   }
+  for (const k of byKey.keys()) shown.add(k)
   return [...byKey.values()]
 }
 
-function AppCellBody({ meals, entries }: { meals: Meal[]; entries: DayEntry[] }) {
+/** 끼니마다 재료를 묶고 끼니 사이에 점선을 긋는다 */
+function AppCellBody({ meals, newKeys, analysis }: { meals: Meal[]; newKeys: string[]; analysis: IngredientAnalysis }) {
   if (!meals.length) return null
+  const shown = new Set<string>()
   return (
-    <div className="mt-0.5 flex min-w-0 flex-col gap-[1px]">
-      {entries.map((e) => (
-        <span key={e.key} className="flex min-w-0 items-center">
-          <span
-            className={`pen truncate text-[14px] leading-[1.05] ${
-              e.caution || e.reaction === 'issue' ? 'text-alert' : e.isNew ? 'text-rose-deep' : ''
-            }`}
-          >
-            {e.isNew ? '+' : ''}
-            {e.name}
-          </span>
-          {e.reaction && <ReactionIcon reaction={e.reaction} className="ml-px shrink-0 text-[9px] leading-none" />}
-        </span>
+    <div className="mt-0.5 flex min-w-0 flex-col">
+      {meals.map((m, mi) => (
+        <div
+          key={m.id}
+          className={`flex min-w-0 flex-col gap-[1px] ${mi > 0 ? 'mt-[2px] border-t border-dashed border-line-strong pt-[2px]' : ''}`}
+        >
+          {mealEntries(m, newKeys, analysis, shown).map((e) => (
+            <span key={e.key} className="flex min-w-0 items-center">
+              <span
+                className={`pen truncate text-[14px] leading-[1.05] ${
+                  e.caution || e.reaction === 'issue' ? 'text-alert' : e.isNew ? 'text-rose-deep' : ''
+                }`}
+              >
+                {e.isNew ? '+' : ''}
+                {e.name}
+              </span>
+              {e.reaction && <ReactionIcon reaction={e.reaction} className="ml-px shrink-0 text-[9px] leading-none" />}
+            </span>
+          ))}
+        </div>
       ))}
       <div className="mt-[2px] flex flex-wrap items-center gap-[3px] pl-[1px]">
         {meals.map((m) => (
@@ -221,16 +229,17 @@ function ExportCellBody({ meals, analysis }: { meals: Meal[]; analysis: Ingredie
     }
   }
   return (
-    <div className="mt-1.5 flex flex-col gap-1">
-      {meals.map((m) => {
+    <div className="mt-1.5 flex flex-col">
+      {meals.map((m, mi) => {
+        const sep = mi > 0 ? 'mt-1.5 border-t-[1.5px] border-dashed border-line-strong pt-1.5' : ''
         if (m.style === 'porridge') {
           const flagged = m.items.filter((it) => {
             const x = mark(m, it.name)
             return x.red || x.reaction
           })
           return (
-            <div key={m.id} className="pen text-[29px] leading-[1.08] break-all">
-              {multi ? `${circled(m.slot)} ` : ''}
+            <div key={m.id} className={`pen text-[29px] leading-[1.08] break-all ${sep}`}>
+              {multi && <ExportTag slot={m.slot} />}
               {m.title || m.items.map((it) => it.name).join('·')}
               {m.totalMl != null ? ` ${m.totalMl}ml` : ''}
               {mealReactions(m).map((r) => (
@@ -249,12 +258,12 @@ function ExportCellBody({ meals, analysis }: { meals: Meal[]; analysis: Ingredie
           )
         }
         return (
-          <div key={m.id} className="pen text-[29px] leading-[1.08]">
+          <div key={m.id} className={`pen text-[29px] leading-[1.08] ${sep}`}>
+            {multi && <ExportTag slot={m.slot} />}
             {m.items.map((it, i) => {
               const x = mark(m, it.name)
               return (
                 <div key={i} className={`whitespace-nowrap ${x.red ? 'text-alert' : ''}`}>
-                  {multi && i === 0 ? `${circled(m.slot)} ` : multi ? ' ' : ''}
                   {it.name}
                   {it.grams != null ? ` ${it.grams}g` : ''}
                   {x.reaction && <ReactionIcon reaction={x.reaction} className="ml-1 text-[20px]" />}
@@ -266,6 +275,17 @@ function ExportCellBody({ meals, analysis }: { meals: Meal[]; analysis: Ingredie
           </div>
         )
       })}
+    </div>
+  )
+}
+
+function ExportTag({ slot }: { slot: number }) {
+  return (
+    <div
+      className="mb-0.5 w-fit rounded-full bg-rose-soft px-2 text-[15px] leading-[1.5] text-ink-soft"
+      style={{ fontFamily: 'var(--font-batang)' }}
+    >
+      {mealTypeLabel(slot)}
     </div>
   )
 }

@@ -15,6 +15,7 @@ import { todayStr, weekStartOf, ymd } from '../lib/dates'
 import { FOOD_BY_ID, FOOD_CATEGORIES, FOODS, foodStatuses, matchFoods, type Food, type FoodStatus } from '../lib/foods'
 import { pairingSuggestions } from '../lib/pairings'
 import { dPlus, type IngredientAnalysis } from '../lib/rules'
+import { nextMealSlot } from '../lib/types'
 
 type Anim = 'on' | 'off'
 
@@ -254,7 +255,7 @@ export default function FoodsPage() {
         <MealSheet
           babyId={ctx.baby.id}
           date={planning.date}
-          slot={(meals.data ?? []).filter((m) => m.date === planning.date).reduce((n, m) => Math.max(n, m.slot), 0) + 1}
+          slot={nextMealSlot((meals.data ?? []).filter((m) => m.date === planning.date))}
           meal={null}
           initialItems={[{ name: planning.food, grams: null }]}
           allMeals={meals.data ?? []}

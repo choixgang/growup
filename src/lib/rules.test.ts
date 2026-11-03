@@ -18,6 +18,16 @@ function meal(date: string, names: string[], issue = false): Meal {
 }
 
 describe('analyzeIngredients', () => {
+  it('재료에 따로 정한 테스트 기간이 있으면 그 기간을 쓴다', () => {
+    const m = meal('2026-10-01', ['쌀', '감자'])
+    m.items[1].testDays = 5
+    const a = analyzeIngredients([m], 3)
+    expect(a.tests.map((t) => [t.name, t.end])).toEqual([
+      ['쌀', '2026-10-03'],
+      ['감자', '2026-10-05'],
+    ])
+  })
+
   it('재료가 처음 나온 날부터 간격만큼을 테스트 기간으로 본다', () => {
     const a = analyzeIngredients([meal('2026-10-01', ['쌀']), meal('2026-10-04', ['쌀', '감자'])], 3)
     expect(a.tests.map((t) => [t.name, t.start, t.end])).toEqual([

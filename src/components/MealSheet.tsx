@@ -2,15 +2,14 @@ import { useMemo, useRef, useState } from 'react'
 import { flushSync } from 'react-dom'
 import { format, parseISO } from 'date-fns'
 import { ko } from 'date-fns/locale'
-import { AlertTriangle, Camera, Plus, Trash2, X } from 'lucide-react'
+import { AlertTriangle, Camera, Minus, Plus, Trash2, X } from 'lucide-react'
 import { repo } from '../data'
-import { analyzeIngredients, checkDraft, defaultReactionMode, normalizeName, reactionModeOf } from '../lib/rules'
+import { analyzeIngredients, checkDraft, defaultReactionMode, normalizeName, reactionModeOf, testDaysOf } from '../lib/rules'
 import { newIngredientSuggestions, pairingNotes, pairingSuggestions } from '../lib/pairings'
 import ReactionIcon from './ReactionIcon'
 import { ingredientsFromTitle } from '../lib/ingredients'
 import { preparePhoto } from '../lib/image'
-import { circled } from '../lib/dates'
-import { emptyLog, ITEM_REACTIONS, type FeedingStyle, type ItemReaction, type Meal, type MealItem, type MealLog, type Preference, type ReactionMode } from '../lib/types'
+import { emptyLog, ITEM_REACTIONS, MEAL_TYPES, type FeedingStyle, type ItemReaction, type Meal, type MealItem, type MealLog, type Preference, type ReactionMode } from '../lib/types'
 
 interface Props {
   babyId: string
@@ -30,7 +29,8 @@ interface Props {
 }
 
 export default function MealSheet(props: Props) {
-  const { meal, date, slot } = props
+  const { meal, date } = props
+  const [slot, setSlot] = useState(Math.min(props.slot, 4))
   const [style, setStyle] = useState<FeedingStyle>(meal ? (meal.style ?? 'topping') : props.defaultStyle)
   const [title, setTitle] = useState(meal?.title ?? '')
   const [totalMl, setTotalMl] = useState<number | null>(meal?.totalMl ?? null)
@@ -69,6 +69,28 @@ export default function MealSheet(props: Props) {
       ),
     [props.allMeals, meal?.id, date, slot, JSON.stringify(cleanItems), props.intervalDays, props.knownIngredients],
   )
+
+  // 이 끼니에서 처음 먹이는 재료. 재료마다 테스트 기간을 따로 정할 수 있다
+  const firstHere = useMemo(() => {
+    const seen = new Set(props.knownIngredients.map(normalizeName))
+    for (const m of props.allMeals) {
+      if (m.id === meal?.id || m.date > date || (m.date === date && m.slot > slot)) continue
+      for (const it of m.items) seen.add(normalizeName(it.name))
+    }
+    return new Set(cleanItems.map((i) => normalizeName(i.name)).filter((k) => k && !seen.has(k)))
+  }, [props.allMeals, props.knownIngredients, meal?.id, date, slot, JSON.stringify(cleanItems)])
+  const newItems = cleanItems.filter(
+    (it, i) => firstHere.has(normalizeName(it.name)) && cleanItems.findIndex((x) => normalizeName(x.name) === normalizeName(it.name)) === i,
+  )
+  function setTestDays(name: string, days: number) {
+    const key = normalizeName(name)
+    const v = Math.min(14, Math.max(1, days))
+    setItems((prev) =>
+      prev.map((it) =>
+        normalizeName(it.name) === key ? { ...it, testDays: v === props.intervalDays ? undefined : v } : it,
+      ),
+    )
+  }
 
   const itemNames = cleanItems.map((i) => i.name)
   const pairs = useMemo(() => pairingNotes(itemNames), [itemNames.join('|')])
@@ -177,7 +199,12 @@ export default function MealSheet(props: Props) {
         style,
         title: porridge ? title.trim() : '',
         totalMl: porridge ? totalMl : null,
-        items: cleanItems.map((i) => ({ name: i.name.trim(), grams: porridge ? null : i.grams })),
+        items: cleanItems.map((i) => ({
+          name: i.name.trim(),
+          grams: porridge ? null : i.grams,
+          // 테스트 기간은 처음 먹이는 끼니에만 남긴다
+          ...(i.testDays != null && firstHere.has(normalizeName(i.name)) ? { testDays: i.testDays } : {}),
+        })),
         log: log ? finishLog(log) : null,
       })
       props.onClose()
@@ -197,7 +224,18 @@ export default function MealSheet(props: Props) {
         <div className="flex items-start justify-between">
           <div>
             <p className="text-[12px] text-ink-soft">{format(parseISO(date), 'M월 d일 EEEE', { locale: ko })}</p>
-            <h2 className="pen text-[30px] leading-tight">{circled(slot)} 끼니</h2>
+            <div className="mt-1 flex gap-1.5">
+              {MEAL_TYPES.map((t) => (
+                <button
+                  key={t.slot}
+                  aria-pressed={slot === t.slot}
+                  className={`rounded-full px-3 py-1 text-[14px] ${slot === t.slot ? 'bg-ink text-paper' : 'bg-rose-soft text-ink-soft'}`}
+                  onClick={() => setSlot(t.slot)}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
           </div>
           <button aria-label="닫기" className="p-1 text-ink-soft" onClick={props.onClose}>
             <X size={22} strokeWidth={1.5} />
@@ -324,6 +362,39 @@ export default function MealSheet(props: Props) {
         >
           <Plus size={15} /> 재료 추가
         </button>
+
+        {newItems.length > 0 && (
+          <div className="mt-3 rounded-xl bg-rose-soft px-3 py-2">
+            <p className="text-[12px] text-ink-soft">새 재료 테스트 기간 · 기본 {props.intervalDays}일</p>
+            {newItems.map((it) => {
+              const days = testDaysOf(it, props.intervalDays)
+              return (
+                <div key={normalizeName(it.name)} className="flex items-center gap-2">
+                  <span className="pen min-w-0 flex-1 truncate text-[21px] text-rose-deep">{it.name.trim()}</span>
+                  <button
+                    aria-label={`${it.name.trim()} 테스트 기간 줄이기`}
+                    className="flex h-7 w-7 items-center justify-center rounded-full bg-card text-ink-soft disabled:opacity-30"
+                    disabled={days <= 1}
+                    onClick={() => setTestDays(it.name, days - 1)}
+                  >
+                    <Minus size={14} />
+                  </button>
+                  <span className={`date-serif w-[38px] text-center text-[16px] ${days !== props.intervalDays ? 'text-rose-deep' : ''}`}>
+                    {days}일
+                  </span>
+                  <button
+                    aria-label={`${it.name.trim()} 테스트 기간 늘리기`}
+                    className="flex h-7 w-7 items-center justify-center rounded-full bg-card text-ink-soft disabled:opacity-30"
+                    disabled={days >= 14}
+                    onClick={() => setTestDays(it.name, days + 1)}
+                  >
+                    <Plus size={14} />
+                  </button>
+                </div>
+              )
+            })}
+          </div>
+        )}
 
         {warnings.length > 0 && (
           <div className="mt-3 rounded-xl bg-warn/10 px-3 py-2">

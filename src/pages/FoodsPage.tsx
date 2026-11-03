@@ -47,8 +47,8 @@ export default function FoodsPage() {
   const deleteMeal = useDeleteMeal(ctx.baby.id)
   const today = todayStr()
   const { eaten, planned } = useMemo(
-    () => foodStatuses(meals.data ?? [], ctx.baby.knownIngredients, today),
-    [meals.data, ctx.baby.knownIngredients, today],
+    () => foodStatuses(meals.data ?? [], ctx.baby.knownIngredients),
+    [meals.data, ctx.baby.knownIngredients],
   )
 
   // 캘린더에서 새로 들어온 재료는 팝업을 닫을 때 하나씩 붙인다. 그 전까지는 빈칸으로 둔다
@@ -179,7 +179,7 @@ export default function FoodsPage() {
           <div className="h-full rounded-full bg-rose transition-[width] duration-500" style={{ width: `${(shown / FOODS.length) * 100}%` }} />
         </div>
         <p className="mt-2 px-1 text-[11px] text-ink-faint">
-          캘린더에 먹인 재료는 자동으로 붙어요. 칸을 눌러 직접 붙이거나 식단을 짤 수 있어요.
+          캘린더에서 '먹였어요'로 기록한 재료는 자동으로 붙어요. 칸을 눌러 직접 붙이거나 식단을 짤 수 있어요.
           <span className="ml-1 inline-flex items-center gap-1">
             <span className="inline-block h-1.5 w-1.5 rounded-full bg-alert/70" /> 흔한 알레르기 식품
           </span>
@@ -380,7 +380,7 @@ function FoodSheet({
               <button className="underline decoration-dotted underline-offset-2" onClick={() => goToMeal(plannedDate)}>
                 {format(parseISO(plannedDate), 'M월 d일 (EEE)', { locale: ko })}
               </button>{' '}
-              식단에 계획돼 있어요.
+              식단에 계획돼 있어요. 먹였어요로 기록하면 스티커가 붙어요.
             </>
           ) : (
             '아직 안 먹어봤어요.'
@@ -403,7 +403,7 @@ function FoodSheet({
           </button>
         </div>
         {status?.source === 'meal' && (
-          <p className="mt-1.5 text-[11px] text-ink-faint">캘린더 기록에서 붙은 스티커예요. 캘린더에서 이 재료를 빼면 떼져요.</p>
+          <p className="mt-1.5 text-[11px] text-ink-faint">캘린더 기록에서 붙은 스티커예요. 캘린더에서 먹였어요 기록을 지우거나 이 재료를 빼면 떼져요.</p>
         )}
 
         <div className="mt-5 border-t border-dashed border-line-strong pt-4">

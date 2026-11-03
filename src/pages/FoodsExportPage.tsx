@@ -13,8 +13,8 @@ export default function FoodsExportPage() {
   const meals = useMeals(ctx.baby.id)
   const today = todayStr()
   const { eaten } = useMemo(
-    () => foodStatuses(meals.data ?? [], ctx.baby.knownIngredients, today),
-    [meals.data, ctx.baby.knownIngredients, today],
+    () => foodStatuses(meals.data ?? [], ctx.baby.knownIngredients),
+    [meals.data, ctx.baby.knownIngredients],
   )
   const count = FOODS.filter((x) => eaten.has(x.id)).length
 

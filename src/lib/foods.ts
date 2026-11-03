@@ -178,23 +178,23 @@ export function matchFoods(name: string): string[] {
 export interface FoodStatus {
   /** 'meal': 캘린더 기록에서, 'known': 직접 먹었어요로 표시(또는 설정의 먹어본 재료) */
   source: 'meal' | 'known'
-  /** 캘린더에서 처음 먹은 날 */
+  /** 캘린더에서 처음 먹였어요로 기록한 날 */
   date?: string
   mealId?: string
 }
 
 /**
- * 재료별 도전 상태. 오늘까지의 식단에 있으면 캘린더 기록, 아니면 먹어본 재료 목록에 있으면 직접 표시.
- * 앞으로 계획만 된 재료는 planned 에 처음 계획한 날로 담는다.
+ * 재료별 도전 상태. '먹였어요'로 기록한 끼니에 있으면 캘린더 기록, 아니면 먹어본 재료 목록에 있으면 직접 표시.
+ * 아직 먹였어요 기록이 없는(계획만 된) 재료는 planned 에 처음 계획한 날로 담는다.
  */
-export function foodStatuses(meals: Meal[], known: string[], today: string) {
+export function foodStatuses(meals: Meal[], known: string[]) {
   const eaten = new Map<string, FoodStatus>()
   const planned = new Map<string, string>()
   const sorted = [...meals].sort((a, b) => a.date.localeCompare(b.date) || a.slot - b.slot)
   for (const meal of sorted) {
     for (const item of meal.items) {
       for (const id of matchFoods(item.name)) {
-        if (meal.date <= today) {
+        if (meal.log) {
           if (!eaten.has(id)) eaten.set(id, { source: 'meal', date: meal.date, mealId: meal.id })
         } else if (!planned.has(id)) planned.set(id, meal.date)
       }

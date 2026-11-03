@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { foodStatuses, matchFoods } from './foods'
-import type { Meal } from './types'
+import { emptyLog, type Meal } from './types'
 
 describe('matchFoods', () => {
   it('긴 이름을 먼저 맞춘다', () => {
@@ -22,8 +22,11 @@ describe('foodStatuses', () => {
   const meal = (date: string, names: string[]): Meal => ({
     id: date, babyId: 'b', date, slot: 1, items: names.map((name) => ({ name, grams: null })), log: null, updatedAt: '',
   })
-  it('오늘까지는 먹은 것, 이후는 계획으로 본다', () => {
-    const s = foodStatuses([meal('2026-10-01', ['쌀', '소고기']), meal('2026-11-02', ['브로콜리'])], ['사과'], '2026-10-29')
+  it('먹였어요로 기록한 끼니만 먹은 것, 나머지는 계획으로 본다', () => {
+    const fed = { ...meal('2026-10-01', ['쌀', '소고기']), log: emptyLog() }
+    const s = foodStatuses([fed, meal('2026-10-02', ['감자']), meal('2026-11-02', ['브로콜리'])], ['사과'])
+    expect(s.eaten.has('감자')).toBe(false)
+    expect(s.planned.get('감자')).toBe('2026-10-02')
     expect(s.eaten.get('소고기')).toMatchObject({ source: 'meal', date: '2026-10-01' })
     expect(s.eaten.get('사과')).toMatchObject({ source: 'known' })
     expect(s.eaten.has('브로콜리')).toBe(false)

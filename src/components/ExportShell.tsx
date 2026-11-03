@@ -231,19 +231,69 @@ function ScenePreview({
 }
 
 /** 마스킹테이프로 벽에 붙인 종이 한 장. seed 마다 살짝 다르게 기울어진다 */
+/** 종이 그림자 층: [아래로 밀림, 번짐, 진하기] */
+const PAPER_SHADOW: [number, number, number][] = [
+  [1, 1, 0.08],
+  [4, 8, 0.08],
+  [18, 36, 0.12],
+  [40, 80, 0.1],
+]
+const SHADOW_PAD = 140
+
+/**
+ * 종이 그림자를 캔버스로 미리 그려 이미지로 쓴다. CSS box-shadow는 html-to-image로 저장할 때
+ * 브라우저(특히 휴대폰)에 따라 번짐이 네모나게 잘리거나 어긋나서, 어디서나 똑같이 나오는 그림으로 바꿨다
+ */
+function usePaperShadow(ref: React.RefObject<HTMLDivElement | null>) {
+  const [url, setUrl] = useState<string>()
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    let last = ''
+    const draw = () => {
+      const w = el.offsetWidth
+      const h = el.offsetHeight
+      if (!w || !h || `${w}x${h}` === last) return
+      last = `${w}x${h}`
+      const c = document.createElement('canvas')
+      c.width = w + SHADOW_PAD * 2
+      c.height = h + SHADOW_PAD * 2
+      const g = c.getContext('2d')!
+      // 종이 자체는 캔버스 밖에 그리고 그림자만 안으로 옮겨 온다
+      const away = c.width + 1000
+      g.fillStyle = '#000'
+      for (const [y, blur, a] of PAPER_SHADOW) {
+        g.shadowColor = `rgba(60,40,25,${a})`
+        g.shadowBlur = blur
+        g.shadowOffsetX = away
+        g.shadowOffsetY = y
+        g.fillRect(SHADOW_PAD - away, SHADOW_PAD, w, h)
+      }
+      setUrl(c.toDataURL('image/png'))
+    }
+    draw()
+    const ro = new ResizeObserver(draw)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [ref])
+  return url
+}
+
 export function PaperSheet({ seed, children }: { seed: number; children: React.ReactNode }) {
   const tilt = ((seed * 7) % 5) * 0.15 - 0.3
+  const ref = useRef<HTMLDivElement>(null)
+  const shadow = usePaperShadow(ref)
   return (
-    <div className="relative">
-      {/* 종이 그림자: 벽에서 살짝 떠 있는 느낌. 기울인 종이에 직접 주면 이미지로 저장할 때
-          그림자가 네모나게 잘려서, 기울이지 않은 층에 따로 그린다 (기울기가 작아 어긋남은 안 보인다) */}
-      <div
-        className="absolute inset-0"
-        style={{
-          boxShadow:
-            '0 1px 1px rgba(60,40,25,0.08), 0 4px 8px rgba(60,40,25,0.08), 0 18px 36px rgba(60,40,25,0.12), 0 40px 80px rgba(60,40,25,0.10)',
-        }}
-      />
+    <div ref={ref} className="relative">
+      {/* 종이 그림자: 벽에서 살짝 떠 있는 느낌. 기울이지 않은 층에 따로 깐다 (기울기가 작아 어긋남은 안 보인다) */}
+      {shadow && (
+        <img
+          src={shadow}
+          alt=""
+          className="pointer-events-none absolute max-w-none"
+          style={{ left: -SHADOW_PAD, top: -SHADOW_PAD, width: `calc(100% + ${SHADOW_PAD * 2}px)`, height: `calc(100% + ${SHADOW_PAD * 2}px)` }}
+        />
+      )}
       <div className="relative" style={{ transform: `rotate(${tilt}deg)` }}>
         <div
           className="relative px-[64px] pt-[70px] pb-[64px]"

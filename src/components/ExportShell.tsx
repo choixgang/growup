@@ -234,25 +234,33 @@ function ScenePreview({
 export function PaperSheet({ seed, children }: { seed: number; children: React.ReactNode }) {
   const tilt = ((seed * 7) % 5) * 0.15 - 0.3
   return (
-    <div className="relative" style={{ transform: `rotate(${tilt}deg)` }}>
-      {/* 종이 그림자: 벽에서 살짝 떠 있는 느낌 */}
+    <div className="relative">
+      {/* 종이 그림자: 벽에서 살짝 떠 있는 느낌. 기울인 종이에 직접 주면 이미지로 저장할 때
+          그림자가 네모나게 잘려서, 기울이지 않은 층에 따로 그린다 (기울기가 작아 어긋남은 안 보인다) */}
       <div
-        className="relative px-[64px] pt-[70px] pb-[64px]"
+        className="absolute inset-0"
         style={{
-          backgroundColor: '#fdfbf6',
-          backgroundImage:
-            'linear-gradient(115deg, rgba(255,255,255,0.7) 0%, rgba(255,255,255,0) 35%, rgba(0,0,0,0.025) 100%), radial-gradient(rgba(120,90,60,0.03) 1px, transparent 1px)',
-          backgroundSize: '100% 100%, 6px 6px',
           boxShadow:
             '0 1px 1px rgba(60,40,25,0.08), 0 4px 8px rgba(60,40,25,0.08), 0 18px 36px rgba(60,40,25,0.12), 0 40px 80px rgba(60,40,25,0.10)',
         }}
-      >
-        {children}
+      />
+      <div className="relative" style={{ transform: `rotate(${tilt}deg)` }}>
+        <div
+          className="relative px-[64px] pt-[70px] pb-[64px]"
+          style={{
+            backgroundColor: '#fdfbf6',
+            backgroundImage:
+              'linear-gradient(115deg, rgba(255,255,255,0.7) 0%, rgba(255,255,255,0) 35%, rgba(0,0,0,0.025) 100%), radial-gradient(rgba(120,90,60,0.03) 1px, transparent 1px)',
+            backgroundSize: '100% 100%, 6px 6px',
+          }}
+        >
+          {children}
+        </div>
+        <Tape className="-top-[18px] -left-[42px] w-[150px] rotate-[-38deg]" color="#e4d3b8" />
+        <Tape className="-top-[18px] -right-[42px] w-[150px] rotate-[38deg]" color="#c9d6c0" />
+        <Tape className="-bottom-[20px] -left-[38px] w-[140px] rotate-[34deg]" color="#c9d6c0" />
+        <Tape className="-right-[40px] -bottom-[20px] w-[140px] rotate-[-36deg]" color="#e4d3b8" />
       </div>
-      <Tape className="-top-[18px] -left-[42px] w-[150px] rotate-[-38deg]" color="#e4d3b8" />
-      <Tape className="-top-[18px] -right-[42px] w-[150px] rotate-[38deg]" color="#c9d6c0" />
-      <Tape className="-bottom-[20px] -left-[38px] w-[140px] rotate-[34deg]" color="#c9d6c0" />
-      <Tape className="-right-[40px] -bottom-[20px] w-[140px] rotate-[-36deg]" color="#e4d3b8" />
     </div>
   )
 }

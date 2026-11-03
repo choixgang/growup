@@ -12,14 +12,17 @@ interface Props {
   birthDate: string
   variant: 'app' | 'export'
   onSelectDate?: (date: string) => void
+  /** 이 주들만 그린다 (이미지를 여러 장으로 나눌 때). [시작, 끝) 주 번호 */
+  weekRange?: [number, number]
 }
 
 /**
  * 먼슬리 달력. 앱에서는 요약(새 재료·끼니 점)만, 내보내기에서는 재료+g 전부를 손글씨로 보여준다.
  * 새 재료 테스트 기간은 주마다 마스킹테이프 띠로 이어 그린다.
  */
-export default function MonthGrid({ month, meals, analysis, birthDate, variant, onSelectDate }: Props) {
-  const weeks = monthWeeks(month)
+export default function MonthGrid({ month, meals, analysis, birthDate, variant, onSelectDate, weekRange }: Props) {
+  const allWeeks = monthWeeks(month)
+  const weeks = weekRange ? allWeeks.slice(weekRange[0], weekRange[1]) : allWeeks
   const isExport = variant === 'export'
   const today = todayStr()
   const byDate = new Map<string, Meal[]>()
@@ -54,7 +57,7 @@ export default function MonthGrid({ month, meals, analysis, birthDate, variant, 
         const lanes = strips.reduce((n, s) => Math.max(n, s.lane + 1), 0)
         const stripSpace = lanes ? lanes * (laneH + laneGap) + 4 : 0
         return (
-          <div key={wi} className="relative grid grid-cols-7 border-b border-line">
+          <div key={wi} data-week className="relative grid grid-cols-7 border-b border-line">
             {week.map((cell, ci) => {
               const dayMeals = byDate.get(cell.date) ?? []
               const newKeys = analysis.newByDate.get(cell.date) ?? []

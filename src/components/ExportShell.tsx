@@ -3,7 +3,9 @@ import { ArrowLeft, Download, Share2 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { renderNodeToImage } from '../lib/exportImage'
 
-const SCENE_W = 1500
+export const SCENE_W = 1500
+/** 장면(배경 포함) 세로 패딩. 나눌 높이를 계산할 때 쓴다 */
+export const SCENE_PAD_Y = 120
 
 type Backdrop = 'wall' | 'linen' | 'wood'
 
@@ -35,76 +37,89 @@ const BACKDROPS: Record<Backdrop, { label: string; style: React.CSSProperties }>
   },
 }
 
-/** 이미지 내보내기 화면: 배경을 고르고, 미리보기를 보고, 저장·공유한다 */
+/**
+ * 이미지 내보내기 화면: 배경을 고르고, 미리보기를 보고, 저장·공유한다.
+ * pages 가 여러 개면 한 장씩 따로 이미지로 만든다 (파일 이름 뒤에 -1, -2 …)
+ */
 export default function ExportShell({
   fileName,
   shareTitle,
-  children,
+  pages,
 }: {
   fileName: string
   shareTitle: string
-  children: React.ReactNode
+  pages: React.ReactNode[]
 }) {
   const navigate = useNavigate()
   const [backdrop, setBackdrop] = useState<Backdrop>('wall')
-  const [busy, setBusy] = useState(false)
+  const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [scale, setScale] = useState(0.25)
-  const [sceneH, setSceneH] = useState(2000)
   const wrapRef = useRef<HTMLDivElement>(null)
-  const sceneRef = useRef<HTMLDivElement>(null)
+  const sceneRefs = useRef<(HTMLDivElement | null)[]>([])
+  const multi = pages.length > 1
 
   useLayoutEffect(() => {
-    const update = () => {
-      if (wrapRef.current) setScale(wrapRef.current.clientWidth / SCENE_W)
-      if (sceneRef.current) setSceneH(sceneRef.current.offsetHeight)
-    }
+    const update = () => wrapRef.current && setScale(wrapRef.current.clientWidth / SCENE_W)
     update()
     const ro = new ResizeObserver(update)
     if (wrapRef.current) ro.observe(wrapRef.current)
-    if (sceneRef.current) ro.observe(sceneRef.current)
     return () => ro.disconnect()
   }, [])
 
   const canShare = typeof navigator !== 'undefined' && 'canShare' in navigator
+  const nameOf = (i: number) => (multi ? fileName.replace(/\.jpg$/, `-${i + 1}.jpg`) : fileName)
 
-  async function make(): Promise<Blob | null> {
-    if (!sceneRef.current) return null
-    setBusy(true)
+  async function make(): Promise<File[] | null> {
     setError(null)
     try {
-      return await renderNodeToImage(sceneRef.current, 1.6)
+      const files: File[] = []
+      for (let i = 0; i < pages.length; i++) {
+        const node = sceneRefs.current[i]
+        if (!node) return null
+        setBusy(multi ? `만드는 중… ${i + 1}/${pages.length}` : '만드는 중…')
+        const blob = await renderNodeToImage(node, 1.6)
+        files.push(new File([blob], nameOf(i), { type: 'image/jpeg' }))
+      }
+      return files
     } catch (e) {
       setError((e as Error).message || '이미지를 만들지 못했어요')
       return null
     } finally {
-      setBusy(false)
+      setBusy(null)
     }
   }
 
+  function save(files: File[]) {
+    files.forEach((file, i) => {
+      // 여러 장을 한꺼번에 받으면 브라우저가 막는 경우가 있어 조금씩 띄운다
+      setTimeout(() => {
+        const url = URL.createObjectURL(file)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = file.name
+        a.click()
+        setTimeout(() => URL.revokeObjectURL(url), 2000)
+      }, i * 400)
+    })
+  }
+
   async function download() {
-    const blob = await make()
-    if (!blob) return
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = fileName
-    a.click()
-    setTimeout(() => URL.revokeObjectURL(url), 2000)
+    const files = await make()
+    if (files) save(files)
   }
 
   async function share() {
-    const blob = await make()
-    if (!blob) return
-    const file = new File([blob], fileName, { type: 'image/jpeg' })
-    if (navigator.canShare?.({ files: [file] })) {
+    const files = await make()
+    if (!files) return
+    if (navigator.canShare?.({ files })) {
       try {
-        await navigator.share({ files: [file], title: shareTitle })
+        await navigator.share({ files, title: shareTitle })
       } catch {
         // 사용자가 공유 창을 닫음
       }
     } else {
-      await download()
+      save(files)
     }
   }
 
@@ -125,13 +140,23 @@ export default function ExportShell({
         <span className="w-[72px]" />
       </header>
 
-      <div ref={wrapRef} className="mx-3 overflow-hidden rounded-md shadow-2xl" style={{ height: sceneH * scale }}>
-        <div style={{ transform: `scale(${scale})`, transformOrigin: 'top left', width: SCENE_W }}>
-          <div ref={sceneRef} style={{ width: SCENE_W, ...BACKDROPS[backdrop].style }} className="relative px-[110px] py-[120px] text-ink">
-            {children}
-          </div>
-        </div>
+      <div ref={wrapRef} className="mx-3 flex flex-col gap-3">
+        {pages.map((page, i) => (
+          <ScenePreview
+            key={i}
+            scale={scale}
+            sceneRef={(el) => {
+              sceneRefs.current[i] = el
+            }}
+            style={BACKDROPS[backdrop].style}
+          >
+            {page}
+          </ScenePreview>
+        ))}
       </div>
+      {multi && (
+        <p className="mt-2 text-center text-[12px] text-paper/60">세로로 길어서 {pages.length}장으로 나눴어요</p>
+      )}
 
       <div className="safe-bottom mx-auto max-w-[520px] px-4 pt-4 pb-6">
         <div className="flex justify-center gap-2">
@@ -150,14 +175,55 @@ export default function ExportShell({
         </div>
         {error && <p className="mt-3 text-center text-[13px] text-rose">{error}</p>}
         <div className="mt-4 flex gap-2">
-          <button className="btn flex-1 bg-paper text-ink" onClick={download} disabled={busy}>
-            <Download size={17} /> {busy ? '만드는 중…' : '이미지 저장'}
+          <button className="btn flex-1 bg-paper text-ink" onClick={download} disabled={!!busy}>
+            <Download size={17} /> {busy ?? (multi ? `이미지 ${pages.length}장 저장` : '이미지 저장')}
           </button>
           {canShare && (
-            <button className="btn flex-1 border border-paper/40 text-paper" onClick={share} disabled={busy}>
+            <button className="btn flex-1 border border-paper/40 text-paper" onClick={share} disabled={!!busy}>
               <Share2 size={17} /> 공유
             </button>
           )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/** 장면 하나의 축소 미리보기. 장면 높이에 맞춰 틀 높이를 잡는다 */
+function ScenePreview({
+  scale,
+  sceneRef,
+  style,
+  children,
+}: {
+  scale: number
+  sceneRef: (el: HTMLDivElement | null) => void
+  style: React.CSSProperties
+  children: React.ReactNode
+}) {
+  const [h, setH] = useState(2000)
+  const ref = useRef<HTMLDivElement | null>(null)
+  useLayoutEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const update = () => setH(el.offsetHeight)
+    update()
+    const ro = new ResizeObserver(update)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
+  return (
+    <div className="overflow-hidden rounded-md shadow-2xl" style={{ height: h * scale }}>
+      <div style={{ transform: `scale(${scale})`, transformOrigin: 'top left', width: SCENE_W }}>
+        <div
+          ref={(el) => {
+            ref.current = el
+            sceneRef(el)
+          }}
+          style={{ width: SCENE_W, paddingTop: SCENE_PAD_Y, paddingBottom: SCENE_PAD_Y, ...style }}
+          className="relative px-[110px] text-ink"
+        >
+          {children}
         </div>
       </div>
     </div>

@@ -127,13 +127,12 @@ export default function MonthGrid({ month, meals, analysis, birthDate, variant, 
                     transform: `rotate(${((s.test.colorIndex * 37) % 5) * 0.18 - 0.36}deg)`,
                   }}
                 >
-                  {(isExport || s.endCol > s.startCol) && (
-                    <span
-                      className={`pen truncate text-ink/80 ${isExport ? 'pl-3 text-[20px]' : 'pl-1.5 text-[10.5px] leading-none'}`}
-                    >
-                      {s.isStart ? s.test.name : `${s.test.name} ·`}
-                    </span>
-                  )}
+                  {/* 하루짜리 띠도 이름을 보여준다 (좁으면 잘림) */}
+                  <span
+                    className={`pen truncate text-ink/80 ${isExport ? 'pl-3 text-[20px]' : 'pl-1 text-[10.5px] leading-none'}`}
+                  >
+                    {s.isStart ? s.test.name : `${s.test.name} ·`}
+                  </span>
                 </div>
               ))}
             </div>
@@ -182,6 +181,23 @@ function AppCellBody({ meals, newKeys, analysis }: { meals: Meal[]; newKeys: str
           key={m.id}
           className={`flex min-w-0 flex-col gap-[1px] ${mi > 0 ? 'mt-[2px] border-t border-dashed border-line-strong pt-[2px]' : ''}`}
         >
+          {/* 끼니 태그 오른쪽에 먹임 점과 끼니 전체 반응 */}
+          <span className="flex min-w-0 items-center gap-[2px]">
+            <span className="shrink-0 rounded-full bg-rose-soft px-[3px] text-[8.5px] leading-[1.35] text-ink-soft">
+              {mealTypeLabel(m.slot)}
+            </span>
+            <span
+              className={`h-[5px] w-[5px] shrink-0 rounded-full ${
+                m.log ? (m.log.reaction === 'issue' ? 'bg-alert' : 'bg-ink-soft') : 'border border-ink-faint'
+              }`}
+            />
+            {/* 이상 반응은 빨간 점으로 보인다 */}
+            {mealReactions(m)
+              .filter((r) => r !== 'issue')
+              .map((r) => (
+                <ReactionIcon key={r} reaction={r} className="shrink-0 text-[9px] leading-none" />
+              ))}
+          </span>
           {mealEntries(m, newKeys, analysis, shown).map((e) => (
             <span key={e.key} className="flex min-w-0 items-center">
               <span
@@ -197,23 +213,6 @@ function AppCellBody({ meals, newKeys, analysis }: { meals: Meal[]; newKeys: str
           ))}
         </div>
       ))}
-      <div className="mt-[2px] flex flex-wrap items-center gap-[3px] pl-[1px]">
-        {meals.map((m) => (
-          <span key={m.id} className="flex items-center gap-px">
-            <span
-              className={`h-[5px] w-[5px] rounded-full ${
-                m.log ? (m.log.reaction === 'issue' ? 'bg-alert' : 'bg-ink-soft') : 'border border-ink-faint'
-              }`}
-            />
-            {/* 전체 표시 모드의 기호도는 먹임 점 옆에 (이상 반응은 빨간 점으로 보인다) */}
-            {mealReactions(m)
-              .filter((r) => r !== 'issue')
-              .map((r) => (
-                <ReactionIcon key={r} reaction={r} className="shrink-0 text-[9px] leading-none" />
-              ))}
-          </span>
-        ))}
-      </div>
     </div>
   )
 }

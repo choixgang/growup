@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { analyzeIngredients, checkDraft, dPlus, mealReactions, reactionModeOf, summarizeMonth } from './rules'
-import type { Meal } from './types'
+import { analyzeIngredients, checkDraft, dPlus, mealReactions, reactionModeOf, remainingIngredients, summarizeMonth } from './rules'
+import { emptyLog, type Meal } from './types'
 
 let n = 0
 function meal(date: string, names: string[], issue = false): Meal {
@@ -184,5 +184,33 @@ describe('기호도 표시 모드', () => {
     const m = logged('porridge', { reactionMode: 'item', itemReactions: { 소고기: 'dislike' } })
     expect(mealReactions(m)).toEqual([])
     expect(summarizeMonth([m], analyzeIngredients([m], 3), '2026-10').disliked).toEqual(['소고기'])
+  })
+})
+
+describe('remainingIngredients', () => {
+  const meal = (date: string, slot: number, names: string[], fed = false) =>
+    ({
+      id: `${date}-${slot}`,
+      babyId: 'b',
+      date,
+      slot,
+      items: names.map((name) => ({ name, grams: null })),
+      log: fed ? emptyLog() : null,
+      updatedAt: '',
+    }) as Meal
+  const week = ['2026-11-01', '2026-11-02']
+
+  it('같은 재료를 띄어쓰기와 상관없이 합쳐 많은 순으로 센다', () => {
+    const meals = [meal(week[0], 1, ['쌀', '단호박']), meal(week[0], 2, ['애호박']), meal(week[1], 1, ['애 호박', '쌀']), meal(week[1], 2, ['애호박'])]
+    expect(remainingIngredients(meals, week)).toEqual([
+      { name: '애호박', count: 3 },
+      { name: '쌀', count: 2 },
+      { name: '단호박', count: 1 },
+    ])
+  })
+
+  it('먹였다고 기록한 끼니와 다른 주 끼니는 세지 않는다', () => {
+    const meals = [meal(week[0], 1, ['애호박'], true), meal(week[1], 1, ['애호박']), meal('2026-11-08', 1, ['애호박'])]
+    expect(remainingIngredients(meals, week)).toEqual([{ name: '애호박', count: 1 }])
   })
 })

@@ -275,3 +275,26 @@ export const TAPE_COLORS = [
 export function tapeColor(index: number): string {
   return TAPE_COLORS[index % TAPE_COLORS.length]
 }
+
+export interface IngredientCount {
+  name: string // 처음 입력된 표기
+  count: number
+}
+
+/** 아직 안 먹인(기록 없는) 끼니에 남은 재료를 세어 많은 순으로 돌려준다. 횟수가 같으면 먼저 나온 재료가 앞 */
+export function remainingIngredients(meals: Meal[], dates: string[]): IngredientCount[] {
+  const counts = new Map<string, IngredientCount>()
+  const planned = meals
+    .filter((m) => !m.log && dates.includes(m.date))
+    .sort((a, b) => a.date.localeCompare(b.date) || a.slot - b.slot)
+  for (const meal of planned) {
+    for (const item of meal.items) {
+      const key = normalizeName(item.name)
+      if (!key) continue
+      const found = counts.get(key)
+      if (found) found.count += 1
+      else counts.set(key, { name: item.name.trim(), count: 1 })
+    }
+  }
+  return [...counts.values()].sort((a, b) => b.count - a.count)
+}

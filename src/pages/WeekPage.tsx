@@ -16,7 +16,7 @@ import {
   useWeekNote,
 } from '../data/hooks'
 import { DAY_LABELS_EN, todayStr, weekDates, weekStartOf, ymd } from '../lib/dates'
-import { dPlus, itemReaction, mealReactions, normalizeName, type IngredientAnalysis } from '../lib/rules'
+import { dPlus, itemReaction, mealReactions, normalizeName, remainingIngredients, type IngredientAnalysis } from '../lib/rules'
 import { mealTypeLabel, nextMealSlot, type ChecklistItem, type ItemReaction, type Meal, type WeekNote } from '../lib/types'
 import ReactionIcon from '../components/ReactionIcon'
 import LinedTextarea from '../components/LinedTextarea'
@@ -165,6 +165,8 @@ export default function WeekPage() {
           )
         })}
       </section>
+
+      <WeekIngredients meals={meals.data ?? []} dates={dates} />
 
       <WeekNotes babyId={ctx.baby.id} weekStart={weekStart} />
 
@@ -414,6 +416,30 @@ function useRowGesture(open: boolean, onOpenChange: (open: boolean) => void, onL
       onContextMenu: (e: React.MouseEvent) => e.preventDefault(),
     },
   }
+}
+
+/** 이번 주에 아직 안 먹인 끼니의 재료와 횟수. 먹였다고 기록하면 그만큼 줄어든다 */
+function WeekIngredients({ meals, dates }: { meals: Meal[]; dates: string[] }) {
+  const hasPlan = meals.some((m) => dates.includes(m.date) && m.items.length > 0)
+  if (!hasPlan) return null
+  const left = remainingIngredients(meals, dates)
+
+  return (
+    <section className="mt-5 rounded-[18px] bg-rose-soft px-4 pt-3 pb-4">
+      <h2 className="title-serif text-right text-[20px] italic">Ingredients</h2>
+      {left.length ? (
+        <ul className="pen mt-1 flex flex-wrap gap-x-4 gap-y-1 text-[20px]">
+          {left.map((it) => (
+            <li key={it.name}>
+              {it.name} <span className="date-serif text-[17px] text-ink">×{it.count}</span>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="pen mt-1 text-[20px] text-ink-soft">이번 주 계획한 재료를 다 먹였어요</p>
+      )}
+    </section>
+  )
 }
 
 /** 항목을 누르면 그 자리에서 고치고, 필드를 벗어나면(또는 엔터) 저장한다. 내용을 다 지우면 항목도 지운다. */

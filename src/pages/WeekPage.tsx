@@ -17,7 +17,7 @@ import {
 } from '../data/hooks'
 import { DAY_LABELS_EN, todayStr, weekDates, weekStartOf, ymd } from '../lib/dates'
 import { dPlus, itemReaction, mealReactions, normalizeName, type IngredientAnalysis } from '../lib/rules'
-import { mealTypeLabel, nextMealSlot, type ItemReaction, type Meal, type WeekNote } from '../lib/types'
+import { mealTypeLabel, nextMealSlot, type ChecklistItem, type ItemReaction, type Meal, type WeekNote } from '../lib/types'
 import ReactionIcon from '../components/ReactionIcon'
 import LinedTextarea from '../components/LinedTextarea'
 
@@ -416,16 +416,95 @@ function useRowGesture(open: boolean, onOpenChange: (open: boolean) => void, onL
   }
 }
 
+/** 항목을 누르면 그 자리에서 고치고, 필드를 벗어나면(또는 엔터) 저장한다. 내용을 다 지우면 항목도 지운다. */
+function ChecklistRow({
+  item,
+  onToggle,
+  onRename,
+  onRemove,
+}: {
+  item: ChecklistItem
+  onToggle: () => void
+  onRename: (text: string) => void
+  onRemove: () => void
+}) {
+  const [draft, setDraft] = useState<string | null>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
+  const textStyle = `pen min-w-0 flex-1 text-[20px] ${item.done ? 'text-ink-faint line-through' : ''}`
+
+  return (
+    <li className="flex items-center gap-2.5">
+      <button
+        aria-label={item.done ? '체크 해제' : '체크'}
+        className={`h-[16px] w-[16px] shrink-0 rounded-full border border-ink-soft ${item.done ? 'bg-ink-soft' : 'bg-card'}`}
+        onClick={onToggle}
+      />
+      {draft === null ? (
+        <button
+          aria-label={`${item.text} 수정`}
+          className={`${textStyle} cursor-text break-words text-left`}
+          onClick={() => setDraft(item.text)}
+        >
+          {item.text}
+        </button>
+      ) : (
+        <form
+          className="flex min-w-0 flex-1"
+          onSubmit={(e) => {
+            e.preventDefault()
+            inputRef.current?.blur()
+          }}
+        >
+          <input
+            ref={inputRef}
+            autoFocus
+            aria-label="항목 수정"
+            className={`${textStyle} bg-transparent`}
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onFocus={(e) => e.currentTarget.setSelectionRange(draft.length, draft.length)}
+            onBlur={(e) => {
+              // 한글 조합 중에 벗어나도 마지막 글자가 빠지지 않게 입력칸의 실제 값을 읽는다
+              const text = e.currentTarget.value.trim()
+              setDraft(null)
+              if (!text) onRemove()
+              else if (text !== item.text) onRename(text)
+            }}
+          />
+        </form>
+      )}
+      <button aria-label="항목 삭제" className="p-1 text-ink-faint" onClick={onRemove}>
+        <X size={14} />
+      </button>
+    </li>
+  )
+}
+
 function WeekNotes({ babyId, weekStart }: { babyId: string; weekStart: string }) {
   const note = useWeekNote(babyId, weekStart)
   const save = useSaveWeekNote()
   const [memo, setMemo] = useState('')
   const [newItem, setNewItem] = useState('')
+  // 칸을 벗어나며 저장한 직후 바로 체크를 눌러도 방금 저장한 내용 위에 이어서 저장되도록, 화면 갱신을 기다리지 않는 최신 노트
+  const latest = useRef<WeekNote | null>(null)
   useEffect(() => setMemo(note.data?.memo ?? ''), [note.data?.memo])
 
   if (!note.data) return null
   const n: WeekNote = note.data
-  const update = (patch: Partial<WeekNote>) => save.mutate({ ...n, ...patch })
+  latest.current = n
+  const update = (patch: Partial<WeekNote>) => {
+    const next = { ...(latest.current ?? n), ...patch }
+    latest.current = next
+    save.mutate(next)
+  }
+  const updateChecklist = (change: (list: ChecklistItem[]) => ChecklistItem[]) =>
+    update({ checklist: change((latest.current ?? n).checklist) })
+  const addItem = (raw: string) => {
+    const text = raw.trim()
+    if (!text) return
+    updateChecklist((list) => [...list, { id: crypto.randomUUID(), text, done: false }])
+    setNewItem('')
+  }
 
   return (
     <section className="mt-5 grid grid-cols-1 gap-3">
@@ -447,33 +526,20 @@ function WeekNotes({ babyId, weekStart }: { babyId: string; weekStart: string })
         <h2 className="title-serif text-right text-[20px] italic">Checklist</h2>
         <ul className="mt-1 flex flex-col gap-1">
           {n.checklist.map((c) => (
-            <li key={c.id} className="flex items-center gap-2.5">
-              <button
-                aria-label={c.done ? '체크 해제' : '체크'}
-                className={`h-[16px] w-[16px] shrink-0 rounded-full border border-ink-soft ${c.done ? 'bg-ink-soft' : 'bg-card'}`}
-                onClick={() =>
-                  update({ checklist: n.checklist.map((x) => (x.id === c.id ? { ...x, done: !x.done } : x)) })
-                }
-              />
-              <span className={`pen flex-1 text-[20px] ${c.done ? 'text-ink-faint line-through' : ''}`}>{c.text}</span>
-              <button
-                aria-label="항목 삭제"
-                className="p-1 text-ink-faint"
-                onClick={() => update({ checklist: n.checklist.filter((x) => x.id !== c.id) })}
-              >
-                <X size={14} />
-              </button>
-            </li>
+            <ChecklistRow
+              key={c.id}
+              item={c}
+              onToggle={() => updateChecklist((list) => list.map((x) => (x.id === c.id ? { ...x, done: !x.done } : x)))}
+              onRename={(text) => updateChecklist((list) => list.map((x) => (x.id === c.id ? { ...x, text } : x)))}
+              onRemove={() => updateChecklist((list) => list.filter((x) => x.id !== c.id))}
+            />
           ))}
         </ul>
         <form
           className="mt-1 flex items-center gap-2.5"
           onSubmit={(e) => {
             e.preventDefault()
-            const text = newItem.trim()
-            if (!text) return
-            update({ checklist: [...n.checklist, { id: crypto.randomUUID(), text, done: false }] })
-            setNewItem('')
+            addItem(newItem)
           }}
         >
           <span className="h-[16px] w-[16px] shrink-0 rounded-full border border-dashed border-ink-faint" />
@@ -482,6 +548,7 @@ function WeekNotes({ babyId, weekStart }: { babyId: string; weekStart: string })
             placeholder="예: 소고기 큐브 만들기"
             value={newItem}
             onChange={(e) => setNewItem(e.target.value)}
+            onBlur={(e) => addItem(e.currentTarget.value)}
           />
         </form>
       </div>

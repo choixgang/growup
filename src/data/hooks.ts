@@ -91,6 +91,8 @@ export function useWeekNote(babyId: string, weekStart: string) {
 export function useSaveWeekNote() {
   const qc = useQueryClient()
   return useMutation({
+    // 노트 전체를 덮어쓰는 저장이라, 연달아 저장해도 도착 순서가 뒤바뀌지 않게 하나씩 보낸다
+    scope: { id: 'saveWeekNote' },
     mutationFn: (note: WeekNote) => repo.saveWeekNote(note),
     onMutate: (note) => qc.setQueryData(['weekNote', note.babyId, note.weekStart], note),
     onSettled: (_d, _e, note) => qc.invalidateQueries({ queryKey: ['weekNote', note.babyId, note.weekStart] }),
